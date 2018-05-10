@@ -1,0 +1,348 @@
+service:
+  name: shopify
+
+# Add the serverless-webpack plugin
+plugins:
+  - serverless-webpack
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  memorySize: 256
+  timeout: 3
+  environment: ${file(env.yml):${self:custom.stage}}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DeleteItem
+        # - dynamodb:DescribeStream
+        - dynamodb:GetItem
+        # - dynamodb:GetRecords
+        # - dynamodb:GetShardIterator
+        # - dynamodb:ListStreams
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+      Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
+    - Effect: Allow
+      Action:
+        - SNS:Publish
+      Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
+    - Effect: Allow
+      Action:
+        - SNS:Publish
+      Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appUninstalledTopic}" ] ]  }
+    - Effect: Allow
+      Action:
+        - SNS:Publish
+      Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
+    - Effect: Allow
+      Action:
+        - SNS:Publish
+      Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.shopUpdateTopic}" ] ]  }
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  region: ${opt:region, self:provider.region}
+  shopsTable: "${self:service}-shops-${self:custom.stage}"
+  appInstalledTopic: "${self:service}-app-installed-${self:custom.stage}"
+  appUninstalledTopic: "${self:service}-app-uninstalled-${self:custom.stage}"
+  authCompleteTopic: "${self:service}-app-auth-complete-${self:custom.stage}"
+  shopUpdateTopic: "${self:service}-shop-update-${self:custom.stage}"
+  userPoolName: "${self:service}-user-pool-${self:custom.stage}"
+  userPoolReplyToEmailAddress: "support@campaignpanel.com" # TODO - This should be in our config file!!
+  webpack:
+    includeModules:
+      forceExclude:
+        - aws-sdk
+    packager: "yarn"
+
+package:
+  exclude:
+    - .gitignore
+    - coverage/**
+    - env-example.yml
+    - env.yml
+    - src/**
+    - tsconfig.json
+    - tslint.json
+    - webpack.config.js
+    - yarn.lock
+
+functions:
+  appUninstalled:
+    handler: src/appUninstalled.handler
+    events:
+      - sns: ${self:custom.appUninstalledTopic}
+  # createAuthChallenge:
+  #   handler: src/authChallenge.createAuthChallenge
+  #   events:
+  #     - cognitoUserPool:
+  #         pool: AppUserPool
+  #         trigger: CreateAuthChallenge
+  # defineAuthChallenge:
+  #   handler: src/authChallenge.defineAuthChallenge
+  #   events:
+  #     - cognitoUserPool:
+  #         pool: AppUserPool
+  #         trigger: DefineAuthChallenge
+  getShopSettings:
+    handler: src/getShopSettings.handler
+    environment:
+      APP_INSTALLED_TOPIC_ARN: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
+    events:
+      - sns: ${self:custom.authCompleteTopic}
+  # preAuthenticate:
+  #   handler: src/preAuthenticate.preAuthenticate
+  #   events:
+  #     - cognitoUserPool:
+  #         pool: AppUserPool
+  #         trigger: PreAuthentication
+  # preSignUp:
+  #   handler: src/preSignUp.preSignUp
+  #   events:
+  #     - cognitoUserPool:
+  #         pool: AppUserPool
+  #         trigger: PreSignUp
+  scriptTagsManager:
+    handler: src/scriptTagsManager.handler
+    events:
+      - sns: ${self:custom.authCompleteTopic}
+  shopifyAuthBegin:
+    handler: src/shopifyAuthBegin.handler
+    events:
+      - http:
+          path: auth/shopify
+          method: get
+  shopifyAuthComplete:
+    handler: src/shopifyAuthComplete.handler
+    events:
+      - http:
+          path: auth/shopify
+          method: post
+    environment:
+      AUTH_COMPLETE_TOPIC_ARN:  { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
+      USER_POOL_ID: { "Ref": "CognitoUserPoolAppUserPool" }
+  shopUpdate:
+    handler: src/shopUpdate.handler
+    events:
+      - sns: ${self:custom.shopUpdateTopic}
+  # verifyAuthChallengeResponse:
+  #   handler: src/authChallenge.verifyAuthChallengeResponse
+  #   events:
+  #     - cognitoUserPool:
+  #         pool: AppUserPool
+  #         trigger: VerifyAuthChallengeResponse
+  webhooksHandler:
+    handler: src/webhooksHandler.handler
+    events:
+      - http:
+          path: webhooks/shopify/{webhook+}
+          method: post
+    environment:
+      APP_UNINSTALLED_TOPIC_ARN: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appUninstalledTopic}" ] ]  }
+      SHOP_UPDATE_TOPIC_ARN: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.shopUpdateTopic}" ] ]  }
+  webhooksManager:
+    handler: src/webhooksManager.handler
+    events:
+      - sns: ${self:custom.authCompleteTopic}
+    environment:
+      WEBHOOKS_URL: { "Fn::Join" : ["", [" https://", { "Ref" : "ApiGatewayRestApi" }, ".execute-api.${self:custom.region}.amazonaws.com/${self:custom.stage}/webhooks/shopify" ] ]  }
+
+resources:
+  Resources:
+    CognitoUserPoolAppUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        DeviceConfiguration: 
+          ChallengeRequiredOnNewDevice: false
+        EmailConfiguration: 
+          ReplyToEmailAddress: ${self:custom.userPoolReplyToEmailAddress}
+        MfaConfiguration: OFF
+        Policies: 
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: true
+            RequireUppercase: true
+        # UsernameAttributes:
+        #   - email
+        UserPoolName: ${self:custom.userPoolName}
+    CognitoUserPoolClientAppUserPoolDefault:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: "default-client"
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - "CUSTOM_AUTH_FLOW_ONLY"
+        RefreshTokenValidity: 30
+        UserPoolId: { "Ref": "CognitoUserPoolAppUserPool" }
+    # CognitoUserPoolClientAppUserPoolWeb:
+    #   Type: AWS::Cognito::UserPoolClient
+    #   Properties:
+    #     ClientName: "${self:service}-user-pool-client-web-${self:provider.stage}"
+    #     GenerateSecret: false
+    #     RefreshTokenValidity: 30
+    #     UserPoolId: { "Ref": "CognitoUserPoolAppUserPool" }
+    ShopsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.shopsTable}
+        AttributeDefinitions:
+          - AttributeName: shopDomain
+            AttributeType: S
+        KeySchema:
+          - AttributeName: shopDomain
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+    # AppSyncGraphQLApiLogRole:
+    #   Type: AWS::IAM::Role
+    #   Properties: 
+    #     AssumeRolePolicyDocument:
+    #       Version: "2012-10-17"
+    #       Statement: 
+    #         - 
+    #           Effect: "Allow"
+    #           Principal: 
+    #             Service: 
+    #               - "appsync.amazonaws.com"
+    #           Action: 
+    #             - "sts:AssumeRole"
+    #     Path: "/"
+    #     Policies:
+    #       -
+    #         PolicyName: "${self:service}-${self:custom.stage}-${self:custom.region}-appSyncLogRoleLogPolicy"
+    #         PolicyDocument:
+    #           Version: "2012-10-17"
+    #           Statement:
+    #             -
+    #               Effect: "Allow"
+    #               Action:
+    #                 - "logs:CreateLogGroup"
+    #                 - "logs:CreateLogStream"
+    #                 - "logs:PutLogEvents"
+    #               Resource:
+    #                 - "*"
+    #     RoleName: "${self:service}-${self:custom.stage}-${self:custom.region}-appSyncLogRole"
+    # AppSyncGraphQLApi:
+    #   Type: AWS::AppSync::GraphQLApi
+    #   Properties:
+    #     UserPoolConfig:
+    #       UserPoolId: { "Ref": "CognitoUserPoolAppUserPool" }
+    #       AwsRegion: ${self:custom.region}
+    #       DefaultAction: ALLOW
+    #     Name: "${self:service}-${self:provider.stage}"
+    #     AuthenticationType: AMAZON_COGNITO_USER_POOLS
+    #     LogConfig:
+    #       CloudWatchLogsRoleArn: { "Fn::GetAtt" : ["AppSyncGraphQLApiLogRole", "Arn"] }
+    #       FieldLogLevel: ERROR
+    # AppSyncGraphQLSchema:
+    #   Type: AWS::AppSync::GraphQLSchema
+    #   Properties:
+    #     Definition: |
+    #       schema {
+    #           query: Query
+    #           mutation: Mutation
+    #       }
+    #       type Query {
+    #           shop(id: ID!): Shop
+    #       }
+    #       type ShopifyAuthBeginResponse {
+    #         authUrl: String!
+    #         token: String!
+    #       }
+    #       input ShopifyAuthCompleteInput {
+    #         code: String!
+    #         hmac: String!
+    #         shop: String!
+    #         state: String!
+    #         timestamp: String!
+    #       }
+    #       type ShopifyAuthCompleteResponse {
+    #         chargeAuthorizationUrl: String
+    #         token: String!
+    #       }
+    #       type Mutation {
+    #           shopifyAuthBegin(shop: String!, callbackUrl: String!, perUser: Boolean!): ShopifyAuthBeginResponse
+    #           shopifyAuthComplete(params: ShopifyAuthCompleteInput!, token: String!): ShopifyAuthCompleteResponse
+    #       }
+    #       type Shop {
+    #           id: ID!
+    #           shopDomain: String!
+    #       }
+    #     ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+    # AppSyncDataSourceShopsTable:
+    #   Type: AWS::AppSync::DataSource
+    #   Properties:
+    #     Type: AMAZON_DYNAMODB
+    #     ServiceRoleArn: { "Fn::GetAtt" : ["AppSyncGraphQLApiLogRole", "Arn"] }
+    #     ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+    #     Name: "shops_${self:custom.stage}"
+    #     DynamoDBConfig:
+    #       TableName: ${self:custom.shopsTable}
+    #       AwsRegion: ${self:custom.region}
+    #       UseCallerCredentials: false
+    # AppSyncResolverQuerySinglePost:
+    #   Type: AWS::AppSync::Resolver
+    #   Properties:
+    #     TypeName: "Query"
+    #     DataSourceName: "shops_${self:custom.stage}"
+    #     RequestMappingTemplate: |
+    #       ## Below example shows how to look up an item with a Primary Key of "id" from GraphQL arguments
+    #       ## The helper $util.dynamodb.toDynamoDBJson automatically converts to a DynamoDB formatted request
+    #       ## There is a "context" object with arguments, identity, headers, and parent field information you can access. 
+    #       ## It also has a shorthand notation avaialable:
+    #       ##  - $context or $ctx is the root object
+    #       ##  - $ctx.arguments or $ctx.args contains arguments
+    #       ##  - $ctx.identity has caller information, such as $ctx.identity.username
+    #       ##  - $ctx.request.headers contains headers, such as $context.request.headers.xyz
+    #       ##  - $ctx.source is a map of the parent field, for instance $ctx.source.xyz
+    #       ## Read more: https://docs.aws.amazon.com/appsync/latest/devguide/resolver-mapping-template-reference.html
+
+    #       {
+    #           "version": "2017-02-28",
+    #           "operation": "GetItem",
+    #           "key": {
+    #               "id": $util.dynamodb.toDynamoDBJson($ctx.args.id),
+    #           }
+    #       }
+    #     ResponseMappingTemplate: |
+    #       ## Pass back the result from DynamoDB. **
+    #       $util.toJson($ctx.result)
+    #     ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+    #     FieldName: "singlePost"
+    # AppSyncDataSourceShopsElasticSearch:
+    #       Type: AWS::AppSync::DataSource
+    #       Properties:
+    #         Type: AMAZON_ELASTICSEARCH
+    #         Description: "My ElasticSearch Source"
+    #         # ServiceRoleArn: String
+    #         ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+    #         Name: ${self:custom.shopsTable}
+    #         ElasticsearchConfig: ElasticsearchConfig
+    #           AwsRegion: String
+    #           Endpoint: String
+    # AppSyncDataSourceShopsLambda:
+    #       Type: AWS::AppSync::DataSource
+    #       Properties:
+    #         Type: AWS_LAMBDA
+    #         Description: "My Lambda Source"
+    #         # ServiceRoleArn: String
+    #         # LambdaConfig: LambdaConfig
+    #         #   LambdaFunctionArn: String
+    #         ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+    #         Name: ${self:custom.shopsTable}
+    # AppSyncDataSourceShopsNone:
+    #       Type: AWS::AppSync::DataSource
+    #       Properties:
+    #         Type: NONE
+    #         Description: "My None Source"
+    #         # ServiceRoleArn: String
+    #         # LambdaConfig: LambdaConfig
+    #         #   LambdaFunctionArn: String
+    #         ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+    #         Name: ${self:custom.shopsTable}
+
+
