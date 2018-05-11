@@ -1,5 +1,5 @@
 import { APIGatewayEvent } from "aws-lambda";
-import { handlerAsync } from "../shopifyAuthBegin";
+import { handlerAsync } from "../authBegin";
 
 beforeAll(() => {
     process.env.JWT_ISS = "jwt-iss";

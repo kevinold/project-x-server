@@ -4,6 +4,7 @@ service:
 # Add the serverless-webpack plugin
 plugins:
   - serverless-webpack
+  - serverless-iam-roles-per-function
 
 provider:
   name: aws
@@ -11,34 +12,6 @@ provider:
   memorySize: 256
   timeout: 3
   environment: ${file(env.yml):${self:custom.stage}}
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:DeleteItem
-        # - dynamodb:DescribeStream
-        - dynamodb:GetItem
-        # - dynamodb:GetRecords
-        # - dynamodb:GetShardIterator
-        # - dynamodb:ListStreams
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-      Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
-    - Effect: Allow
-      Action:
-        - SNS:Publish
-      Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
-    - Effect: Allow
-      Action:
-        - SNS:Publish
-      Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appUninstalledTopic}" ] ]  }
-    - Effect: Allow
-      Action:
-        - SNS:Publish
-      Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
-    - Effect: Allow
-      Action:
-        - SNS:Publish
-      Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.shopUpdateTopic}" ] ]  }
 
 custom:
   stage: ${opt:stage, self:provider.stage}
@@ -71,69 +44,118 @@ package:
 functions:
   appUninstalled:
     handler: src/appUninstalled.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:DeleteItem
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
     events:
       - sns: ${self:custom.appUninstalledTopic}
-  # createAuthChallenge:
-  #   handler: src/authChallenge.createAuthChallenge
-  #   events:
-  #     - cognitoUserPool:
-  #         pool: AppUserPool
-  #         trigger: CreateAuthChallenge
-  # defineAuthChallenge:
-  #   handler: src/authChallenge.defineAuthChallenge
-  #   events:
-  #     - cognitoUserPool:
-  #         pool: AppUserPool
-  #         trigger: DefineAuthChallenge
+  authBegin:
+    handler: src/authBegin.handler
+    events:
+      - http:
+          path: auth/{platform}
+          method: get
+          cors: true
+  authComplete:
+    handler: src/authComplete.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+        Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
+      - Effect: Allow
+        Action:
+          - SNS:Publish
+        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
+      - Effect: Allow
+        Action:
+          - cognito-idp:AdminCreateUser
+          - cognito-idp:AdminGetUser
+          - cognito-idp:AdminUpdateUserAttributes
+        Resource: { "Fn::GetAtt" : ["CognitoUserPoolAppUserPool", "Arn"] }
+    events:
+      - http:
+          path: auth/{platform}
+          method: post
+          cors: true
+    environment:
+      AUTH_COMPLETE_TOPIC_ARN:  { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
+      USER_POOL_ID: { "Ref": "CognitoUserPoolAppUserPool" }
+  createAuthChallenge:
+    handler: src/createAuthChallenge.handler
+    events:
+      - cognitoUserPool:
+          pool: AppUserPool
+          trigger: CreateAuthChallenge
+  defineAuthChallenge:
+    handler: src/defineAuthChallenge.handler
+    events:
+      - cognitoUserPool:
+          pool: AppUserPool
+          trigger: DefineAuthChallenge
   getShopSettings:
     handler: src/getShopSettings.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+        Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
+      - Effect: Allow
+        Action:
+          - SNS:Publish
+        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
     environment:
       APP_INSTALLED_TOPIC_ARN: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
     events:
       - sns: ${self:custom.authCompleteTopic}
-  # preAuthenticate:
-  #   handler: src/preAuthenticate.preAuthenticate
-  #   events:
-  #     - cognitoUserPool:
-  #         pool: AppUserPool
-  #         trigger: PreAuthentication
-  # preSignUp:
-  #   handler: src/preSignUp.preSignUp
-  #   events:
-  #     - cognitoUserPool:
-  #         pool: AppUserPool
-  #         trigger: PreSignUp
+  preSignUp:
+    handler: src/preSignUp.handler
+    events:
+      - cognitoUserPool:
+          pool: AppUserPool
+          trigger: PreSignUp
   scriptTagsManager:
     handler: src/scriptTagsManager.handler
     events:
       - sns: ${self:custom.authCompleteTopic}
-  shopifyAuthBegin:
-    handler: src/shopifyAuthBegin.handler
-    events:
-      - http:
-          path: auth/shopify
-          method: get
-  shopifyAuthComplete:
-    handler: src/shopifyAuthComplete.handler
-    events:
-      - http:
-          path: auth/shopify
-          method: post
-    environment:
-      AUTH_COMPLETE_TOPIC_ARN:  { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
-      USER_POOL_ID: { "Ref": "CognitoUserPoolAppUserPool" }
   shopUpdate:
     handler: src/shopUpdate.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+        Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
     events:
       - sns: ${self:custom.shopUpdateTopic}
-  # verifyAuthChallengeResponse:
-  #   handler: src/authChallenge.verifyAuthChallengeResponse
-  #   events:
-  #     - cognitoUserPool:
-  #         pool: AppUserPool
-  #         trigger: VerifyAuthChallengeResponse
+  verifyAuthChallengeResponse:
+    handler: src/verifyAuthChallengeResponse.handler
+    events:
+      - cognitoUserPool:
+          pool: AppUserPool
+          trigger: VerifyAuthChallengeResponse
   webhooksHandler:
     handler: src/webhooksHandler.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - SNS:Publish
+        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
+      - Effect: Allow
+        Action:
+          - SNS:Publish
+        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appUninstalledTopic}" ] ]  }
+      - Effect: Allow
+        Action:
+          - SNS:Publish
+        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
+      - Effect: Allow
+        Action:
+          - SNS:Publish
+        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.shopUpdateTopic}" ] ]  }
     events:
       - http:
           path: webhooks/shopify/{webhook+}
@@ -165,8 +187,8 @@ resources:
             RequireNumbers: true
             RequireSymbols: true
             RequireUppercase: true
-        # UsernameAttributes:
-        #   - email
+        UsernameAttributes:
+          - email
         UserPoolName: ${self:custom.userPoolName}
     CognitoUserPoolClientAppUserPoolDefault:
       Type: AWS::Cognito::UserPoolClient

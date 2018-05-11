@@ -55,6 +55,8 @@ export async function handlerAsync(event: APIGatewayEvent, now: Date, nonce: str
                 token: createJWT(shop, nonce, now, 600),
             }),
             headers: {
+                "Access-Control-Allow-Credentials" : true,
+                "Access-Control-Allow-Origin": "*",
                 "Cache-Control": "no-cache",
                 "Pragma": "no-cache",
             },

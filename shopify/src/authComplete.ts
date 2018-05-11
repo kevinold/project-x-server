@@ -60,7 +60,7 @@ export async function handlerAsync(
             await writeShop(json.params.shop, accessToken, now, shopsTable, dynamodb);
         }
 
-        await createUser(json.params.shop, identityProvider);
+        const userId = await createUser(json.params.shop, identityProvider);
         const result = await sendAuthCompleteNotification(json.params.shop, accessToken, sns);
         Log.info("Message ID", result.MessageId);
 
@@ -68,9 +68,11 @@ export async function handlerAsync(
         return {
             body: JSON.stringify({
                 chargeAuthorizationUrl: null,
-                token: createJWT(json.params.shop, nonce, now, 600),
+                token: createJWT(userId, nonce, now, 600),
             }),
             headers: {
+                "Access-Control-Allow-Credentials" : true,
+                "Access-Control-Allow-Origin": "*",
                 "Cache-Control": "no-cache",
                 "Pragma": "no-cache",
             },
@@ -84,6 +86,8 @@ export async function handlerAsync(
                 message: "Internal Error",
             }),
             headers: {
+                "Access-Control-Allow-Credentials" : true,
+                "Access-Control-Allow-Origin": "*",
                 "Cache-Control": "no-cache",
                 "Pragma": "no-cache",
             },
@@ -180,7 +184,7 @@ async function exchangeToken(
 // Create the user if they don't already exist
 async function createUser(
     shopDomain: string,
-    identityProvider: AWS.CognitoIdentityServiceProvider) {
+    identityProvider: AWS.CognitoIdentityServiceProvider): Promise<string> {
     const userPoolId = process.env.USER_POOL_ID;
     if (!userPoolId) {
         throw new Error("USER_POOL_ID environment variable not set");
@@ -192,14 +196,33 @@ async function createUser(
         MessageAction: "SUPPRESS",
         UserAttributes: [
             { Name: "email", Value: email },
-            { Name: "shopDomain", Value: shopDomain },
+            { Name: "name", Value: shopDomain },
+            { Name: "website", Value: shopDomain },
         ],
         UserPoolId: userPoolId,
         Username: email,
     };
     Log.info("Admin Create User", userParams);
 
-    return identityProvider.adminCreateUser(userParams).promise();
+    try {
+        const result = await identityProvider.adminCreateUser(userParams).promise();
+        if (result.User && result.User.Username) {
+            return result.User.Username;
+        }
+
+        throw Error("No username!!");
+    } catch (err) {
+        if (err.code === "UsernameExistsException") {
+            const user = await identityProvider.adminGetUser({
+                UserPoolId: userPoolId,
+                Username: email,
+            }).promise();
+
+            return user.Username;
+        }
+
+        throw err;
+    }
 }
 
 // Write the shop record to the dynamodb table

@@ -3,7 +3,7 @@ import * as AWS from "aws-sdk";
 import * as crypto from "crypto";
 
 import { createJWT } from "../lib/jwt";
-import { handlerAsync } from "../shopifyAuthComplete";
+import { handlerAsync } from "../authComplete";
 
 beforeAll(() => {
     process.env.AUTH_COMPLETE_TOPIC_ARN = "app-installed-topic-arn";
