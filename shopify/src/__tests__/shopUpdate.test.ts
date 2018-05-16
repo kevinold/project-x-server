@@ -20,6 +20,7 @@ test("Happy path", async () => {
                 Message: JSON.stringify({
                     accessToken: "accessToken",
                     data: {
+                        country_code: "AU",
                         county_taxes: null,
                         domain: "example.com",
                         email: "owner@example.myshopify.com",
@@ -59,22 +60,25 @@ test("Happy path", async () => {
     expect(result).toBeTruthy();
     expect(dynamodb.update).toBeCalledWith({
         ExpressionAttributeNames: {
-            "#D": "domain",
-            "#N": "name",
-            "#S": "source",
-            "#T": "timezone",
+            "#P0": "countryCode",
+            "#P1": "domain",
+            "#P2": "email",
+            "#P3": "name",
+            "#P4": "source",
+            "#P5": "timezone",
         },
         ExpressionAttributeValues: {
-            ":D": "example.com",
-            ":N": "My Store",
-            ":S": "partner",
-            ":T": "Australia/Sydney",
-            ":email": "owner@example.myshopify.com",
+            ":P0": "AU",
+            ":P1": "example.com",
+            ":P2": "owner@example.myshopify.com",
+            ":P3": "My Store",
+            ":P4": "partner",
+            ":P5": "Australia/Sydney",
         },
         Key: {
             shopDomain: "example.myshopify.com",
         },
         TableName: "shops",
-        UpdateExpression: "SET #D = :D, email = :email, #N = :N, #S = :S, #T = :T",
+        UpdateExpression: "SET #P0 = :P0, #P1 = :P1, #P2 = :P2, #P3 = :P3, #P4 = :P4, #P5 = :P5",
     });
 });

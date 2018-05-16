@@ -2,8 +2,8 @@ import { APIGatewayEvent } from "aws-lambda";
 import * as AWS from "aws-sdk";
 import * as crypto from "crypto";
 
-import { createJWT } from "../lib/jwt";
 import { handlerAsync } from "../authComplete";
+import { createJWT } from "../lib/jwt";
 
 beforeAll(() => {
     process.env.AUTH_COMPLETE_TOPIC_ARN = "app-installed-topic-arn";
@@ -122,6 +122,8 @@ test("A valid GET returns 200 and a valid object", async () => {
         // tslint:disable-next-line:max-line-length
         body: "{\"chargeAuthorizationUrl\":null,\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1NjkxMTcsImlhdCI6MTUyNTkxNywiaXNzIjoiand0LWlzcyIsImp0aSI6InJhbmRvbVN0cmluZyIsInN1YiI6ImV4YW1wbGUubXlzaG9waWZ5LmNvbSJ9.bcw_lETK3g9GeQ47TDQyVEWmelVwcg2JqDVRraopWXU\"}",
         headers: {
+            "Access-Control-Allow-Credentials": true,
+            "Access-Control-Allow-Origin": "*",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         },

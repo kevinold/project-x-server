@@ -15,7 +15,7 @@ export function snakeCase(str: string): string {
             if (i === 0 || v.length < 2) {
                 return v.toLowerCase();
             }
-            return `${v.substring(0, 1).toUpperCase()}${v.substring(1).toLocaleLowerCase()}`;
+            return `${v.substring(0, 1).toUpperCase()}${v.substring(1).toLowerCase()}`;
         })
         .join("");
 }

@@ -78,23 +78,24 @@ test("Happy path", async () => {
     expect(shop.shop.get).toBeCalled();
     expect(dynamodb.update).toBeCalledWith({
         ExpressionAttributeNames: {
-            "#D": "domain",
-            "#N": "name",
-            "#S": "source",
-            "#T": "timezone",
+            "#P0": "domain",
+            "#P1": "email",
+            "#P2": "name",
+            "#P3": "source",
+            "#P4": "timezone",
         },
         ExpressionAttributeValues: {
-            ":D": "example.com",
-            ":N": "My Store",
-            ":S": "partner",
-            ":T": "Australia/Sydney",
-            ":email": "owner@example.myshopify.com",
+            ":P0": "example.com",
+            ":P1": "owner@example.myshopify.com",
+            ":P2": "My Store",
+            ":P3": "partner",
+            ":P4": "Australia/Sydney",
         },
         Key: {
             shopDomain: "example.myshopify.com",
         },
         TableName: "shops",
-        UpdateExpression: "SET #D = :D, email = :email, #N = :N, #S = :S, #T = :T",
+        UpdateExpression: "SET #P0 = :P0, #P1 = :P1, #P2 = :P2, #P3 = :P3, #P4 = :P4",
     });
     expect(sns.publish).toBeCalledWith({
         // tslint:disable-next-line:max-line-length

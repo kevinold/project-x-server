@@ -6,6 +6,7 @@ import * as Shopify from "shopify-api-node";
 import { IShop } from "shopify-api-node";
 
 import { IAppInstalledMessage, IAuthCompleteMessage } from "./interfaces";
+import { writeShop } from "./lib/dynamodb";
 import { Log } from "./lib/log";
 import { shopifyClientFactory } from "./lib/shopifyClientFactory";
 
@@ -31,56 +32,6 @@ export async function handlerAsync(
         await sendAppInstalledNotification(sns, message.shopDomain, shop);
     }
     return true;
-}
-
-async function writeShop(
-    dynamodb: AWS.DynamoDB.DocumentClient,
-    shop: IShop,
-    shopDomain: string,
-): Promise<AWS.DynamoDB.UpdateItemOutput> {
-    const expressionAttributeValues: any = {};
-    const expressionAttributeNames: any = {};
-
-    const updateFields = [];
-    let k: keyof IShop;
-    for (k in shop) {
-        if (shop[k]) {
-            let key = (k === "domain" ? "D" : k);
-            key = (k === "name" ? "N" : key);
-            key = (k === "source" ? "S" : key);
-            key = (k === "timezone" ? "T" : key);
-            const val = shop[k];
-
-            if ((val === null || val === undefined) && k in ["tax_shipping", "taxes_included", "county_taxes"]) {
-                expressionAttributeValues[":" + key] = false;
-            } else {
-                expressionAttributeValues[":" + key] = val;
-            }
-
-            if ((":" + key) in expressionAttributeValues) {
-                if (key === k) {
-                    updateFields.push(key + " = :" + key);
-                } else {
-                    updateFields.push("#" + key + " = :" + key);
-                    expressionAttributeNames["#" + key] = k;
-                }
-            }
-        }
-    }
-
-    const updateExpression = "SET " + updateFields.join(", ");
-
-    const updateParams = {
-        ExpressionAttributeNames: expressionAttributeNames,
-        ExpressionAttributeValues: expressionAttributeValues,
-        Key: {
-            shopDomain,
-        },
-        TableName: process.env.SHOPS_TABLE || "",
-        UpdateExpression: updateExpression,
-    };
-    Log.info("Update Item", updateParams);
-    return dynamodb.update(updateParams).promise();
 }
 
 // Send the SNS notification that the application has been installed

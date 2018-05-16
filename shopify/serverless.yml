@@ -32,6 +32,7 @@ custom:
 package:
   exclude:
     - .gitignore
+    - appsync/**
     - coverage/**
     - env-example.yml
     - env.yml
@@ -199,13 +200,6 @@ resources:
           - "CUSTOM_AUTH_FLOW_ONLY"
         RefreshTokenValidity: 30
         UserPoolId: { "Ref": "CognitoUserPoolAppUserPool" }
-    # CognitoUserPoolClientAppUserPoolWeb:
-    #   Type: AWS::Cognito::UserPoolClient
-    #   Properties:
-    #     ClientName: "${self:service}-user-pool-client-web-${self:provider.stage}"
-    #     GenerateSecret: false
-    #     RefreshTokenValidity: 30
-    #     UserPoolId: { "Ref": "CognitoUserPoolAppUserPool" }
     ShopsTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -219,122 +213,77 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 5
           WriteCapacityUnits: 5
-    # AppSyncGraphQLApiLogRole:
-    #   Type: AWS::IAM::Role
-    #   Properties: 
-    #     AssumeRolePolicyDocument:
-    #       Version: "2012-10-17"
-    #       Statement: 
-    #         - 
-    #           Effect: "Allow"
-    #           Principal: 
-    #             Service: 
-    #               - "appsync.amazonaws.com"
-    #           Action: 
-    #             - "sts:AssumeRole"
-    #     Path: "/"
-    #     Policies:
-    #       -
-    #         PolicyName: "${self:service}-${self:custom.stage}-${self:custom.region}-appSyncLogRoleLogPolicy"
-    #         PolicyDocument:
-    #           Version: "2012-10-17"
-    #           Statement:
-    #             -
-    #               Effect: "Allow"
-    #               Action:
-    #                 - "logs:CreateLogGroup"
-    #                 - "logs:CreateLogStream"
-    #                 - "logs:PutLogEvents"
-    #               Resource:
-    #                 - "*"
-    #     RoleName: "${self:service}-${self:custom.stage}-${self:custom.region}-appSyncLogRole"
-    # AppSyncGraphQLApi:
-    #   Type: AWS::AppSync::GraphQLApi
-    #   Properties:
-    #     UserPoolConfig:
-    #       UserPoolId: { "Ref": "CognitoUserPoolAppUserPool" }
-    #       AwsRegion: ${self:custom.region}
-    #       DefaultAction: ALLOW
-    #     Name: "${self:service}-${self:provider.stage}"
-    #     AuthenticationType: AMAZON_COGNITO_USER_POOLS
-    #     LogConfig:
-    #       CloudWatchLogsRoleArn: { "Fn::GetAtt" : ["AppSyncGraphQLApiLogRole", "Arn"] }
-    #       FieldLogLevel: ERROR
-    # AppSyncGraphQLSchema:
-    #   Type: AWS::AppSync::GraphQLSchema
-    #   Properties:
-    #     Definition: |
-    #       schema {
-    #           query: Query
-    #           mutation: Mutation
-    #       }
-    #       type Query {
-    #           shop(id: ID!): Shop
-    #       }
-    #       type ShopifyAuthBeginResponse {
-    #         authUrl: String!
-    #         token: String!
-    #       }
-    #       input ShopifyAuthCompleteInput {
-    #         code: String!
-    #         hmac: String!
-    #         shop: String!
-    #         state: String!
-    #         timestamp: String!
-    #       }
-    #       type ShopifyAuthCompleteResponse {
-    #         chargeAuthorizationUrl: String
-    #         token: String!
-    #       }
-    #       type Mutation {
-    #           shopifyAuthBegin(shop: String!, callbackUrl: String!, perUser: Boolean!): ShopifyAuthBeginResponse
-    #           shopifyAuthComplete(params: ShopifyAuthCompleteInput!, token: String!): ShopifyAuthCompleteResponse
-    #       }
-    #       type Shop {
-    #           id: ID!
-    #           shopDomain: String!
-    #       }
-    #     ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
-    # AppSyncDataSourceShopsTable:
-    #   Type: AWS::AppSync::DataSource
-    #   Properties:
-    #     Type: AMAZON_DYNAMODB
-    #     ServiceRoleArn: { "Fn::GetAtt" : ["AppSyncGraphQLApiLogRole", "Arn"] }
-    #     ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
-    #     Name: "shops_${self:custom.stage}"
-    #     DynamoDBConfig:
-    #       TableName: ${self:custom.shopsTable}
-    #       AwsRegion: ${self:custom.region}
-    #       UseCallerCredentials: false
-    # AppSyncResolverQuerySinglePost:
-    #   Type: AWS::AppSync::Resolver
-    #   Properties:
-    #     TypeName: "Query"
-    #     DataSourceName: "shops_${self:custom.stage}"
-    #     RequestMappingTemplate: |
-    #       ## Below example shows how to look up an item with a Primary Key of "id" from GraphQL arguments
-    #       ## The helper $util.dynamodb.toDynamoDBJson automatically converts to a DynamoDB formatted request
-    #       ## There is a "context" object with arguments, identity, headers, and parent field information you can access. 
-    #       ## It also has a shorthand notation avaialable:
-    #       ##  - $context or $ctx is the root object
-    #       ##  - $ctx.arguments or $ctx.args contains arguments
-    #       ##  - $ctx.identity has caller information, such as $ctx.identity.username
-    #       ##  - $ctx.request.headers contains headers, such as $context.request.headers.xyz
-    #       ##  - $ctx.source is a map of the parent field, for instance $ctx.source.xyz
-    #       ## Read more: https://docs.aws.amazon.com/appsync/latest/devguide/resolver-mapping-template-reference.html
-
-    #       {
-    #           "version": "2017-02-28",
-    #           "operation": "GetItem",
-    #           "key": {
-    #               "id": $util.dynamodb.toDynamoDBJson($ctx.args.id),
-    #           }
-    #       }
-    #     ResponseMappingTemplate: |
-    #       ## Pass back the result from DynamoDB. **
-    #       $util.toJson($ctx.result)
-    #     ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
-    #     FieldName: "singlePost"
+    AppSyncGraphQLApiLogRole:
+      Type: AWS::IAM::Role
+      Properties: 
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement: 
+            - 
+              Effect: "Allow"
+              Principal: 
+                Service: 
+                  - "appsync.amazonaws.com"
+              Action: 
+                - "sts:AssumeRole"
+        Path: "/"
+        Policies:
+          -
+            PolicyName: "${self:service}-${self:custom.stage}-${self:custom.region}-appSyncLogRoleLogPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                -
+                  Effect: "Allow"
+                  Action:
+                    - "logs:CreateLogGroup"
+                    - "logs:CreateLogStream"
+                    - "logs:PutLogEvents"
+                  Resource:
+                    - "*"
+                -
+                  Effect: Allow
+                  Action:
+                    - dynamodb:GetItem
+                  Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
+        RoleName: "${self:service}-${self:custom.stage}-${self:custom.region}-appSyncLogRole"
+    AppSyncGraphQLApi:
+      Type: AWS::AppSync::GraphQLApi
+      Properties:
+        UserPoolConfig:
+          UserPoolId: { "Ref": "CognitoUserPoolAppUserPool" }
+          AwsRegion: ${self:custom.region}
+          DefaultAction: ALLOW
+        Name: "${self:service}-${self:provider.stage}"
+        AuthenticationType: AMAZON_COGNITO_USER_POOLS
+        LogConfig:
+          CloudWatchLogsRoleArn: { "Fn::GetAtt" : ["AppSyncGraphQLApiLogRole", "Arn"] }
+          FieldLogLevel: ERROR
+    AppSyncGraphQLSchema:
+      Type: AWS::AppSync::GraphQLSchema
+      Properties:
+        Definition: ${file(appsync/schema.graphql)}
+        ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+    AppSyncDataSourceShopsTable:
+      Type: AWS::AppSync::DataSource
+      Properties:
+        Type: AMAZON_DYNAMODB
+        ServiceRoleArn: { "Fn::GetAtt" : ["AppSyncGraphQLApiLogRole", "Arn"] }
+        ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+        Name: "shops_${self:custom.stage}"
+        DynamoDBConfig:
+          TableName: ${self:custom.shopsTable}
+          AwsRegion: ${self:custom.region}
+          UseCallerCredentials: false
+    AppSyncResolverQuerySinglePost:
+      Type: AWS::AppSync::Resolver
+      Properties:
+        TypeName: "Query"
+        DataSourceName: "shops_${self:custom.stage}"
+        RequestMappingTemplate: ${file(./appsync/query_shop_request.vtl)}
+        ResponseMappingTemplate: ${file(./appsync/query_shop_response.vtl)}
+        ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
+        FieldName: "shop"
     # AppSyncDataSourceShopsElasticSearch:
     #       Type: AWS::AppSync::DataSource
     #       Properties:

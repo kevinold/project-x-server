@@ -65,6 +65,8 @@ test("A valid GET returns 200 and a valid object", async () => {
         // tslint:disable-next-line:max-line-length
         body: "{\"authUrl\":\"https://example.myshopify.com/admin/oauth/authorize?client_id=shopify-api-key&scope=read_script_tags%2Cwrite_script_tags&redirect_uri=http%3A%2F%2Fwww.example.com%2Fauth%2Fshopify%2Fcallback&state=randomString\",\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1MjY1MTcsImlhdCI6MTUyNTkxNywiaXNzIjoiand0LWlzcyIsImp0aSI6InJhbmRvbVN0cmluZyIsInN1YiI6ImV4YW1wbGUubXlzaG9waWZ5LmNvbSJ9.8e7_eu13Rx8atTvK1sejo1T7bC1R-NymofEsmQ6bwSY\"}",
         headers: {
+            "Access-Control-Allow-Credentials": true,
+            "Access-Control-Allow-Origin": "*",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         },

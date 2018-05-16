@@ -14,7 +14,7 @@
     "got": "8.3.1",
     "jsonwebtoken": "^8.2.1",
     "shopify-api-node": "2.14.0",
-    "source-map-support": "^0.5.5"
+    "source-map-support": "0.5.6"
   },
   "devDependencies": {
     "@types/aws-lambda": "8.10.3",
@@ -27,11 +27,11 @@
     "serverless": "^1.27.2",
     "serverless-iam-roles-per-function": "^0.1.5",
     "serverless-webpack": "5.1.5",
-    "ts-jest": "22.4.5",
+    "ts-jest": "22.4.6",
     "ts-loader": "^4.3.0",
     "tslint": "5.10.0",
     "typescript": "2.8.3",
-    "webpack": "^4.8.1",
+    "webpack": "4.8.3",
     "webpack-node-externals": "1.7.2"
   },
   "jest": {
