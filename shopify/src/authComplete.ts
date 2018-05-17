@@ -6,9 +6,8 @@ import * as crypto from "crypto";
 import * as got from "got";
 import * as jwt from "jsonwebtoken";
 
-import { badRequest } from "./lib/http";
+import { badRequest, internalError, ok } from "./lib/http";
 import { createJWT } from "./lib/jwt";
-import { Log } from "./lib/log";
 import { getRandomString } from "./lib/string";
 
 // The shape of the token exchange response from Shopify
@@ -28,6 +27,8 @@ export async function handlerAsync(
     identityProvider: AWS.CognitoIdentityServiceProvider,
     dynamodb: AWS.DynamoDB.DocumentClient,
     sns: AWS.SNS): Promise<ProxyResult> {
+    console.log("Event", event);
+
     try {
         if (!event.body) {
             return badRequest("body is empty");
@@ -43,15 +44,16 @@ export async function handlerAsync(
             return badRequest("'params' is missing");
         }
 
-        // tslint:disable-next-line:max-line-length
-        if (!validateNonce(json.token, json.params) || !validateShopDomain(json.params.shop) || !validateHMAC(json.params)) {
+        if (!validateNonce(json.token, json.params)
+            || !validateShopDomain(json.params.shop)
+            || !validateHMAC(json.params)) {
             return badRequest("Invalid 'token'");
         }
 
         const resp = await exchangeToken(json.params.shop, json.params.code, post);
         const accessToken = resp.access_token;
         if (accessToken === undefined) {
-            Log.error("resp[\"access_token\"] is undefined");
+            console.log("resp[\"access_token\"] is undefined");
             throw new Error("resp[\"access_token\"] is undefined");
         }
 
@@ -62,37 +64,16 @@ export async function handlerAsync(
 
         const userId = await createUser(json.params.shop, identityProvider);
         const result = await sendAuthCompleteNotification(json.params.shop, accessToken, sns);
-        Log.info("Message ID", result.MessageId);
+        console.log("Message ID", result.MessageId);
 
         // Return the authURL
-        return {
-            body: JSON.stringify({
-                chargeAuthorizationUrl: null,
-                token: createJWT(userId, nonce, now, 600),
-            }),
-            headers: {
-                "Access-Control-Allow-Credentials" : true,
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-            },
-            statusCode: 200,
-        };
+        return ok({
+            chargeAuthorizationUrl: null,
+            token: createJWT(userId, nonce, now, 600),
+        });
     } catch (e) {
-        Log.error("Error", e);
-        return {
-            body: JSON.stringify({
-                error: e,
-                message: "Internal Error",
-            }),
-            headers: {
-                "Access-Control-Allow-Credentials" : true,
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-            },
-            statusCode: 500,
-        };
+        console.log("Error", e);
+        return internalError();
     }
 }
 
@@ -113,7 +94,7 @@ function validateNonce(token: string, params: any): boolean {
         return true;
 
     } catch (err) {
-        Log.error("Error verifying nonce", err);
+        console.log("Error verifying nonce", err);
         return false;
     }
 }
@@ -121,7 +102,7 @@ function validateNonce(token: string, params: any): boolean {
 // Check that the shopDomain is a valid myshop.com domain. This is required by Shopify
 function validateShopDomain(shopDomain: string): boolean {
     if (shopDomain.match(/^[a-z][a-z0-9\-]*\.myshopify\.com$/i) === null) {
-        Log.error("Shop validation failed", shopDomain);
+        console.log("Shop validation failed", shopDomain);
         return false;
     }
 
@@ -174,7 +155,7 @@ async function exchangeToken(
 
     const res: got.Response<IShopifyTokenResponse> = await post(url, options);
     const json = res.body;
-    Log.info("Shopify Token Exchange Response", json);
+    console.log("Shopify Token Exchange Response", json);
     if ("error_description" in json || "error" in json || "errors" in json) {
         throw new Error(json.error_description || json.error || json.errors);
     }
@@ -202,7 +183,7 @@ async function createUser(
         UserPoolId: userPoolId,
         Username: email,
     };
-    Log.info("Admin Create User", userParams);
+    console.log("Admin Create User", userParams);
 
     try {
         const result = await identityProvider.adminCreateUser(userParams).promise();
@@ -245,7 +226,7 @@ async function writeShop(
         TableName: shopsTable,
         UpdateExpression: "SET platform = :platform, accessToken = :accessToken, installedAt = :installedAt",
     };
-    Log.info("Update Item", updateParams);
+    console.log("Update Item", updateParams);
 
     // TODO Retrieve the shop first and only set installedAt ONCE
     return dynamodb.update(updateParams).promise();

@@ -5,13 +5,13 @@ default: &default
   SHOPIFY_API_SECRET: ${opt:shopifyApiSecret}
   SHOPIFY_SCOPE: "read_script_tags:write_script_tags"
   SHOPS_TABLE: "${self:custom.shopsTable}"
+  REPLY_EMAIL: "no-reply@example.com"
 
 dev:
   <<: *default
   JWT_SECRET: "YOUR-JWT-SECRET"
   SHOPIFY_API_KEY: "YOUR-SHOPIFY-API-KEY"
   SHOPIFY_API_SECRET: "YOUR-SHOPIFY-API-SECRET"
-  LOGGING: "debug"
 
 stage:
   <<: *default

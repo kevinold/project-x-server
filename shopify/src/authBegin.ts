@@ -3,12 +3,13 @@ import "source-map-support/register";
 import { APIGatewayEvent, ProxyResult } from "aws-lambda";
 import * as querystring from "querystring";
 
-import { badRequest } from "./lib/http";
+import { badRequest, internalError, ok } from "./lib/http";
 import { createJWT } from "./lib/jwt";
-import { Log } from "./lib/log";
 import { getRandomString } from "./lib/string";
 
 export async function handlerAsync(event: APIGatewayEvent, now: Date, nonce: string): Promise<ProxyResult> {
+    console.log("Event", event);
+
     try {
         const shopifyApiKey = process.env.SHOPIFY_API_KEY;
         const shopifyScope = process.env.SHOPIFY_SCOPE;
@@ -49,32 +50,13 @@ export async function handlerAsync(event: APIGatewayEvent, now: Date, nonce: str
         const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${eClientId}&scope=${eScope}&redirect_uri=${eCallbackUrl}&state=${eNonce}${option}`;
 
         // Return the authURL
-        return {
-            body: JSON.stringify({
-                authUrl,
-                token: createJWT(shop, nonce, now, 600),
-            }),
-            headers: {
-                "Access-Control-Allow-Credentials" : true,
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-            },
-            statusCode: 200,
-        };
+        return ok({
+            authUrl,
+            token: createJWT(shop, nonce, now, 600),
+        });
     } catch (e) {
-        Log.error("Error", e);
-        return {
-            body: JSON.stringify({
-                error: e,
-                message: "Internal Error",
-            }),
-            headers: {
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-            },
-            statusCode: 500,
-        };
+        console.log("Error", e);
+        return internalError();
     }
 }
 

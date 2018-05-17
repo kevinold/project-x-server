@@ -2,15 +2,8 @@ import "source-map-support/register";
 
 import { CognitoUserPoolEvent } from "aws-lambda";
 
-import { Log } from "./lib/log";
-
 export async function handler(event: CognitoUserPoolEvent): Promise<CognitoUserPoolEvent> {
-    Log.info("CreateAuthChallenge Event", event);
-    Log.info("CreateAuthChallenge Request", event.request);
-    Log.info("CreateAuthChallenge Response", event.response);
-    console.log("CreateAuthChallenge Event", event);
-    console.log("CreateAuthChallenge Request", event.request);
-    console.log("CreateAuthChallenge Response (In)", event.response);
+    console.log("Event", event);
 
     if (!event.request.session || event.request.session.length === 0) {
         // For the first challenge ask for a JWT token
@@ -23,7 +16,8 @@ export async function handler(event: CognitoUserPoolEvent): Promise<CognitoUserP
         // @ts-ignore
         event.response.challengeMetadata = "JWT";
     }
-    console.log("CreateAuthChallenge Response (Out)", event.response);
+
+    console.log("Response", event.response);
 
     return event;
 }

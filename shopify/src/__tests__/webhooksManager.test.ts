@@ -17,6 +17,12 @@ test("Adds new webhooks", async () => {
             snsTopicArn: "shop-update-topic-arn",
             topic: "shop/update",
         },
+        {
+            address: "https://app.example.com/products/create",
+            format: "json",
+            snsTopicArn: "products-create-topic-arn",
+            topic: "products/create",
+        },
     ];
 
     const event: SNSEvent = {
@@ -69,7 +75,7 @@ test("Adds new webhooks", async () => {
                     updated_at: "updated_at",
                 },
             ]),
-            update: jest.fn().mockName("webhook.update").mockReturnValue({
+            update: jest.fn().mockName("webhook.update").mockReturnValueOnce({
                 address: "https://app.example.com/app/uninstalled",
                 created_at: "created_at",
                 fields: [],
@@ -77,6 +83,15 @@ test("Adds new webhooks", async () => {
                 id: 1,
                 metafield_namespaces: [],
                 topic: "app/uninstalled",
+                updated_at: "updated_at",
+            }).mockReturnValueOnce({
+                address: "https://app.example.com/products/create",
+                created_at: "created_at",
+                fields: [],
+                format: "json",
+                id: 2,
+                metafield_namespaces: [],
+                topic: "products/create",
                 updated_at: "updated_at",
             }),
         },
@@ -92,11 +107,16 @@ test("Adds new webhooks", async () => {
     expect(result).toBeTruthy();
     expect(mockFactory).toBeCalledWith("accessToken", "example.myshopify.com");
     expect(shop.webhook.list).toBeCalled();
-    expect(shop.webhook.create.mock.calls.length).toBe(1);
+    expect(shop.webhook.create.mock.calls.length).toBe(2);
     expect(shop.webhook.create).toBeCalledWith({
         address: "https://app.example.com/shop/update",
         format: "json",
         topic: "shop/update",
+    });
+    expect(shop.webhook.create).toBeCalledWith({
+        address: "https://app.example.com/products/create",
+        format: "json",
+        topic: "products/create",
     });
 });
 

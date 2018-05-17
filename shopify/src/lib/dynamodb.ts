@@ -1,6 +1,5 @@
 import { IShop } from "shopify-api-node";
 
-import { Log } from "./log";
 import { snakeCase } from "./string";
 
 export async function writeShop(
@@ -44,6 +43,6 @@ export async function writeShop(
         TableName: process.env.SHOPS_TABLE || "",
         UpdateExpression: updateExpression,
     };
-    Log.info("Update Item", updateParams);
+    console.log("Update Item", updateParams);
     return dynamodb.update(updateParams).promise();
 }

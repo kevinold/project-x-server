@@ -6,7 +6,6 @@ import { IWebhook } from "shopify-api-node";
 
 import { config } from "./config";
 import { IAuthCompleteMessage, IWebhookConfig } from "./interfaces";
-import { Log } from "./lib/log";
 import { shopifyClientFactory } from "./lib/shopifyClientFactory";
 
 function hasWebhookChanged(existingWebhook: IWebhook, newWebhook: IWebhookConfig): boolean {
@@ -14,44 +13,75 @@ function hasWebhookChanged(existingWebhook: IWebhook, newWebhook: IWebhookConfig
         || existingWebhook.format !== newWebhook.format;
 }
 
+async function updateOrRemoveExistingWebhooks(
+    webhooks: IWebhookConfig[],
+    currentWebhooks: Shopify.IWebhook[],
+    shopify: Shopify): Promise<void> {
+        // Check the existing webhooks
+        for (const existingWebhook of currentWebhooks) {
+            const newWebhook = webhooks.find((w) => w.topic === existingWebhook.topic);
+            if (newWebhook === undefined) {
+                // Removing any that should no longer be installed
+                console.log("Removing webhook", existingWebhook);
+                await shopify.webhook.delete(existingWebhook.id);
+            } else {
+                // Updating existing webhooks if they have changed
+                if (hasWebhookChanged(existingWebhook, newWebhook)) {
+                    console.log("Updating webhook", newWebhook);
+                    const { snsTopicArn, ...updateWebhook } = newWebhook;
+                    await shopify.webhook.update(existingWebhook.id, updateWebhook);
+                } else {
+                    console.log("Existing webhook [1]", existingWebhook);
+                }
+            }
+        }
+}
+
+async function addNewWebhooks(
+    webhooks: IWebhookConfig[],
+    currentWebhooks: Shopify.IWebhook[],
+    shopify: Shopify): Promise<void> {
+        // Check the new webhooks and add them if they don't exist
+        for (const newWebhook of webhooks) {
+            console.log("New Webhook", newWebhook);
+
+            const existingWebhook = currentWebhooks.find((w) => w.topic === newWebhook.topic);
+            if (existingWebhook === undefined) {
+                console.log("Adding webhook", newWebhook);
+                const { snsTopicArn, ...createWebhook } = newWebhook;
+                await shopify.webhook.create(createWebhook);
+            } else {
+                console.log("Existing webhook [2]", existingWebhook);
+            }
+    }
+}
+
 export async function handlerAsync(
     event: SNSEvent,
     webhooks: IWebhookConfig[],
     clientFactory: (accessToken: string, shopDomain: string) => Shopify,
 ): Promise<boolean> {
+    console.log("Event", event);
+
+    // Loop through all of the records we received
     for (const record of event.Records) {
-        Log.info(record.Sns);
+        console.log("Record.Sns", record.Sns);
+
         const data = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
-        Log.info("Data", data);
+        console.log("Data", data);
 
         const shopify = clientFactory(data.accessToken, data.shopDomain);
 
+        // Get a list of all existing webhooks
+        // TODO - Should this be paginated?
         const currentWebhooks = await shopify.webhook.list();
 
-        for (const existingWebhook of currentWebhooks) {
-            const newWebhook = webhooks.find((w) => w.topic === existingWebhook.topic);
-            if (newWebhook === undefined) {
-                Log.info("Removing webhook", existingWebhook);
-                await shopify.webhook.delete(existingWebhook.id);
-            } else {
-                if (hasWebhookChanged(existingWebhook, newWebhook)) {
-                    Log.info("Updating webhook", newWebhook);
-                    const { snsTopicArn, ...updateWebhook } = newWebhook;
-                    await shopify.webhook.update(existingWebhook.id, updateWebhook);
-                }
-            }
-        }
+        console.log("Configured webhooks", webhooks);
 
-        for (const newWebhook of webhooks) {
-            const existingWebhook = currentWebhooks.find((w) => w.topic === newWebhook.topic);
-            if (existingWebhook === undefined) {
-                Log.info("Adding webhook", newWebhook);
-                const { snsTopicArn, ...createWebhook } = newWebhook;
-                await shopify.webhook.create(createWebhook);
-            }
-        }
+        await updateOrRemoveExistingWebhooks(webhooks, currentWebhooks, shopify);
+        await addNewWebhooks(webhooks, currentWebhooks, shopify);
 
-        Log.info("Webhooks updated");
+        console.log("Webhooks updated");
     }
 
     return true;

@@ -79,6 +79,8 @@ test("A valid webhook returns 200 and publishes the event", async () => {
     expect(result).toEqual({
         body: "",
         headers: {
+            "Access-Control-Allow-Credentials": true,
+            "Access-Control-Allow-Origin": "*",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         },
@@ -160,6 +162,8 @@ test("A non configured X-Shopify-Topic returns 204", async () => {
     expect(result).toEqual({
         body: "",
         headers: {
+            "Access-Control-Allow-Credentials": true,
+            "Access-Control-Allow-Origin": "*",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         },
@@ -224,6 +228,8 @@ test("A null body returns 400", async () => {
     expect(result).toEqual({
         body: JSON.stringify({ error: 400, message: "Body was null" }),
         headers: {
+            "Access-Control-Allow-Credentials": true,
+            "Access-Control-Allow-Origin": "*",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         },
@@ -287,6 +293,8 @@ test("Invalid HMAC header returns 400", async () => {
     expect(result).toEqual({
         body: JSON.stringify({ error: 400, message: "X-Shopify-Hmac-Sha256 header validation failed" }),
         headers: {
+            "Access-Control-Allow-Credentials": true,
+            "Access-Control-Allow-Origin": "*",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         },
@@ -349,6 +357,8 @@ test("Missing HMAC header returns 400", async () => {
     expect(result).toEqual({
         body: JSON.stringify({ error: 400, message: "X-Shopify-Hmac-Sha256 header validation failed" }),
         headers: {
+            "Access-Control-Allow-Credentials": true,
+            "Access-Control-Allow-Origin": "*",
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         },

@@ -7,7 +7,6 @@ import { IShop } from "shopify-api-node";
 
 import { IAppInstalledMessage, IAuthCompleteMessage } from "./interfaces";
 import { writeShop } from "./lib/dynamodb";
-import { Log } from "./lib/log";
 import { shopifyClientFactory } from "./lib/shopifyClientFactory";
 
 export async function handlerAsync(
@@ -16,18 +15,20 @@ export async function handlerAsync(
     dynamodb: AWS.DynamoDB.DocumentClient,
     sns: AWS.SNS,
 ): Promise<boolean> {
+    console.log("Event", event);
+
     // Loop through each record just in case we receive multiple
     for (const record of event.Records) {
-        Log.info("Record.Sns", record.Sns);
+        console.log("Record.Sns", record.Sns);
 
         const message = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
-        Log.info("Message", message);
+        console.log("Message", message);
 
         const shopify = clientFactory(message.accessToken, message.shopDomain);
 
         // TODO The catch() should provider some sort of retry mechanism (i.e. SQS retry, SNS notifications, etc)
         const shop = await shopify.shop.get();
-        Log.info(shop);
+        console.log(shop);
         await writeShop(dynamodb, shop, message.shopDomain);
         await sendAppInstalledNotification(sns, message.shopDomain, shop);
     }

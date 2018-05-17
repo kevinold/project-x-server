@@ -22,7 +22,7 @@ custom:
   authCompleteTopic: "${self:service}-app-auth-complete-${self:custom.stage}"
   shopUpdateTopic: "${self:service}-shop-update-${self:custom.stage}"
   userPoolName: "${self:service}-user-pool-${self:custom.stage}"
-  userPoolReplyToEmailAddress: "support@campaignpanel.com" # TODO - This should be in our config file!!
+  userPoolReplyToEmailAddress: ${file(env.yml):${self:custom.stage}.REPLY_EMAIL}
   webpack:
     includeModules:
       forceExclude:
@@ -169,7 +169,7 @@ functions:
     events:
       - sns: ${self:custom.authCompleteTopic}
     environment:
-      WEBHOOKS_URL: { "Fn::Join" : ["", [" https://", { "Ref" : "ApiGatewayRestApi" }, ".execute-api.${self:custom.region}.amazonaws.com/${self:custom.stage}/webhooks/shopify" ] ]  }
+      WEBHOOKS_URL: { "Fn::Join" : ["", ["https://", { "Ref" : "ApiGatewayRestApi" }, ".execute-api.${self:custom.region}.amazonaws.com/${self:custom.stage}/webhooks/shopify" ] ]  }
 
 resources:
   Resources:
@@ -195,6 +195,13 @@ resources:
       Type: AWS::Cognito::UserPoolClient
       Properties:
         ClientName: "default-client"
+        GenerateSecret: false
+        RefreshTokenValidity: 30
+        UserPoolId: { "Ref": "CognitoUserPoolAppUserPool" }
+    CognitoUserPoolClientAppUserPoolOAuth:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: "oauth-client"
         GenerateSecret: false
         ExplicitAuthFlows:
           - "CUSTOM_AUTH_FLOW_ONLY"
@@ -284,36 +291,3 @@ resources:
         ResponseMappingTemplate: ${file(./appsync/query_shop_response.vtl)}
         ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
         FieldName: "shop"
-    # AppSyncDataSourceShopsElasticSearch:
-    #       Type: AWS::AppSync::DataSource
-    #       Properties:
-    #         Type: AMAZON_ELASTICSEARCH
-    #         Description: "My ElasticSearch Source"
-    #         # ServiceRoleArn: String
-    #         ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
-    #         Name: ${self:custom.shopsTable}
-    #         ElasticsearchConfig: ElasticsearchConfig
-    #           AwsRegion: String
-    #           Endpoint: String
-    # AppSyncDataSourceShopsLambda:
-    #       Type: AWS::AppSync::DataSource
-    #       Properties:
-    #         Type: AWS_LAMBDA
-    #         Description: "My Lambda Source"
-    #         # ServiceRoleArn: String
-    #         # LambdaConfig: LambdaConfig
-    #         #   LambdaFunctionArn: String
-    #         ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
-    #         Name: ${self:custom.shopsTable}
-    # AppSyncDataSourceShopsNone:
-    #       Type: AWS::AppSync::DataSource
-    #       Properties:
-    #         Type: NONE
-    #         Description: "My None Source"
-    #         # ServiceRoleArn: String
-    #         # LambdaConfig: LambdaConfig
-    #         #   LambdaFunctionArn: String
-    #         ApiId: { "Fn::GetAtt": [ "AppSyncGraphQLApi", "ApiId" ] }
-    #         Name: ${self:custom.shopsTable}
-
-

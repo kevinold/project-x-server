@@ -8,17 +8,17 @@ import { config } from "./config";
 import { IAuthCompleteMessage } from "./interfaces";
 import { shopifyClientFactory } from "./lib/shopifyClientFactory";
 
-import { Log } from "./lib/log";
-
 export async function handlerAsync(
     event: SNSEvent,
     clientFactory: (accessToken: string, shopDomain: string) => Shopify,
     scriptTags: ICreateScriptTag[],
 ): Promise<boolean> {
+    console.log("Event", event);
+
     for (const record of event.Records) {
-        Log.info(record.Sns);
+        console.log("Record.Sns", record.Sns);
         const data = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
-        Log.info("Message", data);
+        console.log("Data", data);
 
         const shopify = clientFactory(data.accessToken, data.shopDomain);
 
@@ -36,15 +36,17 @@ async function allScriptTags(shopify: Shopify): Promise<IScriptTag[]> {
     return shopify.scriptTag.list();
 }
 
-// tslint:disable-next-line:max-line-length
-async function createScriptTags(shopify: Shopify, currentTags: IScriptTag[], requiredScriptTags: ICreateScriptTag[]): Promise<void> {
+async function createScriptTags(
+    shopify: Shopify,
+    currentTags: IScriptTag[],
+    requiredScriptTags: ICreateScriptTag[]): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         const promises: Array<Promise<IScriptTag>> = [];
 
-        Log.info("Checking for ScriptTags that need to be created");
+        console.log("Checking for ScriptTags that need to be created");
         requiredScriptTags.forEach((tag) => {
             if (!currentTags.some((currentValue, _index, _array) => currentValue.src === tag.src)) {
-                Log.info("ScriptTag needs to be created", tag);
+                console.log("ScriptTag needs to be created", tag);
                 promises.push(shopify.scriptTag.create(tag));
             }
         });
@@ -52,29 +54,31 @@ async function createScriptTags(shopify: Shopify, currentTags: IScriptTag[], req
         if (promises.length > 0) {
             Promise.all(promises)
                 .then((scriptTag) => {
-                    Log.info("ScriptTag created", scriptTag);
+                    console.log("ScriptTag created", scriptTag);
                     resolve();
                 })
                 .catch((err) => {
-                    Log.info("ScriptTag failed to create", err);
+                    console.log("ScriptTag failed to create", err);
                     reject(err);
                 });
         } else {
-            Log.info("No ScriptTags needed creating");
+            console.log("No ScriptTags needed creating");
             resolve();
         }
     });
 }
 
-// tslint:disable-next-line:max-line-length
-async function deleteScriptTags(shopify: Shopify, currentTags: IScriptTag[], requiredScriptTags: ICreateScriptTag[]): Promise<void> {
+async function deleteScriptTags(
+    shopify: Shopify,
+    currentTags: IScriptTag[],
+    requiredScriptTags: ICreateScriptTag[]): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         const promises: Array<Promise<void>> = [];
 
-        Log.info("Checking for ScriptTags that need to be deleted");
+        console.log("Checking for ScriptTags that need to be deleted");
         currentTags.forEach((tag) => {
             if (!requiredScriptTags.some((currentValue, _index, _array) => currentValue.src === tag.src)) {
-                Log.info("ScriptTag needs to be deleted", tag);
+                console.log("ScriptTag needs to be deleted", tag);
                 promises.push(shopify.scriptTag.delete(tag.id));
             }
         });
@@ -82,26 +86,28 @@ async function deleteScriptTags(shopify: Shopify, currentTags: IScriptTag[], req
         if (promises.length > 0) {
             Promise.all(promises)
                 .then((scriptTag) => {
-                    Log.info("ScriptTag deleted", scriptTag);
+                    console.log("ScriptTag deleted", scriptTag);
                     resolve();
                 })
                 .catch((err) => {
-                    Log.info("ScriptTag failed to delete", err);
+                    console.log("ScriptTag failed to delete", err);
                     reject(err);
                 });
         } else {
-            Log.info("No ScriptTags needed deleting");
+            console.log("No ScriptTags needed deleting");
             resolve();
         }
     });
 }
 
-// tslint:disable-next-line:max-line-length
-async function updateScriptTags(shopify: Shopify, currentTags: IScriptTag[], requiredScriptTags: IUpdateScriptTag[]): Promise<void> {
+async function updateScriptTags(
+    shopify: Shopify,
+    currentTags: IScriptTag[],
+    requiredScriptTags: IUpdateScriptTag[]): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         const promises: Array<Promise<IScriptTag>> = [];
 
-        Log.info("Checking for ScriptTags that need to be updated");
+        console.log("Checking for ScriptTags that need to be updated");
         currentTags.forEach((tag) => {
             requiredScriptTags.forEach((currentValue) => {
                 let requireUpdate = false;
@@ -116,7 +122,7 @@ async function updateScriptTags(shopify: Shopify, currentTags: IScriptTag[], req
                 }
 
                 if (requireUpdate) {
-                    Log.info("ScriptTag needs to be updated", tag);
+                    console.log("ScriptTag needs to be updated", tag);
                     promises.push(shopify.scriptTag.update(tag.id, currentValue));
                 }
             });
@@ -125,15 +131,15 @@ async function updateScriptTags(shopify: Shopify, currentTags: IScriptTag[], req
         if (promises.length > 0) {
             Promise.all(promises)
                 .then((scriptTag) => {
-                    Log.info("ScriptTag updated", scriptTag);
+                    console.log("ScriptTag updated", scriptTag);
                     resolve();
                 })
                 .catch((err) => {
-                    Log.info("ScriptTag failed to update", err);
+                    console.log("ScriptTag failed to update", err);
                     reject(err);
                 });
         } else {
-            Log.info("No ScriptTags needed update");
+            console.log("No ScriptTags needed update");
             resolve();
         }
     });

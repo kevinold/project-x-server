@@ -6,81 +6,65 @@ import * as crypto from "crypto";
 
 import { config } from "./config";
 import { IBaseMessage, IWebhookConfig } from "./interfaces";
-import { Log } from "./lib/log";
+import { badRequest, noContent } from "./lib/http";
 
 export async function handlerAsync(
     event: APIGatewayEvent,
-    webhooks: IWebhookConfig[],
+    allWebhooks: IWebhookConfig[],
     sns: AWS.SNS): Promise<ProxyResult> {
-    const shopifyHmac = event.headers["X-Shopify-Hmac-Sha256"];
-    const shopifyShopDomain = event.headers["X-Shopify-Shop-Domain"];
-    const webhook = event.headers["X-Shopify-Topic"];
+    console.log("Event", event);
+
+    // If the body is missing the return a bad request
     const body = event.body;
     if (body === null) {
-        Log.info("Body was null");
-        return {
-            body: JSON.stringify({ error: 400, message: "Body was null" }),
-            headers: {
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-            },
-            statusCode: 400,
-        };
+        console.log("Body was null");
+        return badRequest("Body was null");
     }
 
+    // Check the HMAC header and return a bad request if it doesn't match
+    const {
+        "X-Shopify-Hmac-Sha256": hmacHeader,
+        "X-Shopify-Shop-Domain": shopDomainHeader,
+        "X-Shopify-Topic": topicHeader,
+    } = event.headers;
     const calculatedHmac
         = crypto.createHmac("SHA256", process.env.SHOPIFY_API_SECRET || "").update(body).digest("base64");
-
-    if (shopifyHmac !== calculatedHmac) {
-        Log.info("X-Shopify-Hmac-Sha256 header validation failed", shopifyHmac, calculatedHmac);
-        return {
-            body: JSON.stringify({ error: 400, message: "X-Shopify-Hmac-Sha256 header validation failed" }),
-            headers: {
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-            },
-            statusCode: 400,
-        };
+    if (hmacHeader !== calculatedHmac) {
+        console.log("X-Shopify-Hmac-Sha256 header validation failed", hmacHeader, calculatedHmac);
+        return badRequest("X-Shopify-Hmac-Sha256 header validation failed");
     }
 
-    Log.info("Received webhook store " + shopifyShopDomain + " ; topic " + webhook);
-    let webhookFound = false;
+    console.log("Received webhook store " + shopDomainHeader + " ; topic " + topicHeader);
 
+    // Find any webhooks for this topic
+    const webhooks = allWebhooks.filter((webhookConfig) => webhookConfig.topic === topicHeader);
+
+    // If there are no configured webhooks then log it and return successfully
+    if (webhooks.length === 0) {
+        console.log("No SNS ARN configured for topic", topicHeader);
+        return noContent();
+    }
+
+    // Loop through each of the matching webhooks and publish a message to the relevant topic
     for (const webhookConfig of webhooks) {
-        if (webhookConfig.topic === webhook) {
-            webhookFound = true;
-            const topicArn = webhookConfig.snsTopicArn;
+        const topicArn = webhookConfig.snsTopicArn;
 
-            Log.info("Using SNS ARN", topicArn);
+        const message: IBaseMessage = {
+            data: JSON.parse(body),
+            event: webhookConfig.topic,
+            shopDomain: shopDomainHeader,
+        };
 
-            const message: IBaseMessage = {
-                data: JSON.parse(body),
-                event: webhook,
-                shopDomain: shopifyShopDomain,
-            };
+        const params: AWS.SNS.PublishInput = {
+            Message: JSON.stringify(message),
+            TopicArn: topicArn,
+        };
 
-            const params: AWS.SNS.PublishInput = {
-                Message: JSON.stringify(message),
-                TopicArn: topicArn,
-            };
-
-            const result = await sns.publish(params).promise();
-            Log.info("Message ID", result.MessageId);
-        }
+        const result = await sns.publish(params).promise();
+        console.log(`SNS ARN ${topicArn}; Message ID ${result.MessageId}`);
     }
 
-    if (!webhookFound) {
-        Log.info("No SNS ARN configured for topic", webhook);
-    }
-
-    return {
-        body: "",
-        headers: {
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-        },
-        statusCode: 204,
-    };
+    return noContent();
 }
 
 export async function handler(event: APIGatewayEvent): Promise<ProxyResult> {
