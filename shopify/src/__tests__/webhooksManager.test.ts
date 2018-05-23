@@ -1,5 +1,6 @@
 import { SNSEvent } from "aws-lambda";
-import * as Shopify from "shopify-api-node";
+import * as fetch from "jest-fetch-mock";
+
 import { IWebhookConfig } from "../interfaces";
 import { handlerAsync } from "../webhooksManager";
 
@@ -16,12 +17,6 @@ test("Adds new webhooks", async () => {
             format: "json",
             snsTopicArn: "shop-update-topic-arn",
             topic: "shop/update",
-        },
-        {
-            address: "https://app.example.com/products/create",
-            format: "json",
-            snsTopicArn: "products-create-topic-arn",
-            topic: "products/create",
         },
     ];
 
@@ -51,19 +46,10 @@ test("Adds new webhooks", async () => {
         }],
     };
 
-    const shop = {
-        webhook: {
-            create: jest.fn().mockName("webhook.create").mockReturnValue({
-                address: "https://app.example.com/shop/update",
-                created_at: "created_at",
-                fields: [],
-                format: "json",
-                id: 2,
-                metafield_namespaces: [],
-                topic: "shop/update",
-                updated_at: "updated_at",
-            }),
-            list: jest.fn().mockName("webhook.list").mockReturnValue([
+    fetch.resetMocks();
+    fetch.mockResponseOnce(JSON.stringify({
+        data: {
+            webhooks: [
                 {
                     address: "https://app.example.com/app/uninstalled",
                     created_at: "created_at",
@@ -74,49 +60,53 @@ test("Adds new webhooks", async () => {
                     topic: "app/uninstalled",
                     updated_at: "updated_at",
                 },
-            ]),
-            update: jest.fn().mockName("webhook.update").mockReturnValueOnce({
-                address: "https://app.example.com/app/uninstalled",
-                created_at: "created_at",
-                fields: [],
-                format: "json",
-                id: 1,
-                metafield_namespaces: [],
-                topic: "app/uninstalled",
-                updated_at: "updated_at",
-            }).mockReturnValueOnce({
-                address: "https://app.example.com/products/create",
+            ],
+        },
+    }));
+    fetch.mockResponseOnce(JSON.stringify({
+        data: {
+            webhook: {
+                address: "https://app.example.com/shop/update",
                 created_at: "created_at",
                 fields: [],
                 format: "json",
                 id: 2,
                 metafield_namespaces: [],
-                topic: "products/create",
+                topic: "shop/update",
                 updated_at: "updated_at",
-            }),
+            },
         },
-    };
-    const mockFactory: jest.Mock<Shopify> = jest.fn().mockReturnValue(shop) as jest.Mock<Shopify>;
+    }));
 
     const result = await handlerAsync(
         event,
         webhooks,
-        mockFactory,
+        // @ts-ignore
+        fetch,
     );
 
-    expect(result).toBeTruthy();
-    expect(mockFactory).toBeCalledWith("accessToken", "example.myshopify.com");
-    expect(shop.webhook.list).toBeCalled();
-    expect(shop.webhook.create.mock.calls.length).toBe(2);
-    expect(shop.webhook.create).toBeCalledWith({
-        address: "https://app.example.com/shop/update",
-        format: "json",
-        topic: "shop/update",
+    expect(result).toBe(true);
+    expect(fetch.mock.calls.length).toBe(2);
+    expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/webhooks.json");
+    expect(fetch.mock.calls[0][1]).toEqual({
+        body: "",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": "accessToken",
+        },
+        method: "GET",
     });
-    expect(shop.webhook.create).toBeCalledWith({
-        address: "https://app.example.com/products/create",
-        format: "json",
-        topic: "products/create",
+    expect(fetch.mock.calls[1][0]).toEqual("https://example.myshopify.com/admin/webhooks.json");
+    expect(fetch.mock.calls[1][1]).toEqual({
+        // tslint:disable-next-line:max-line-length
+        body: "{\"webhook\":{\"address\":\"https://app.example.com/shop/update\",\"format\":\"json\",\"topic\":\"shop/update\"}}",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": "accessToken",
+        },
+        method: "POST",
     });
 });
 
@@ -156,10 +146,10 @@ test("Deletes old webhooks", async () => {
         }],
     };
 
-    const shop = {
-        webhook: {
-            delete: jest.fn().mockName("webhook.delete"),
-            list: jest.fn().mockName("webhook.list").mockReturnValue([
+    fetch.resetMocks();
+    fetch.mockResponseOnce(JSON.stringify({
+        data: {
+            webhooks: [
                 {
                     address: "https://app.example.com/app/uninstalled",
                     created_at: "created_at",
@@ -180,32 +170,39 @@ test("Deletes old webhooks", async () => {
                     topic: "shop/update",
                     updated_at: "updated_at",
                 },
-            ]),
-            update: jest.fn().mockName("webhook.update").mockReturnValue({
-                address: "https://app.example.com/app/uninstalled",
-                created_at: "created_at",
-                fields: [],
-                format: "json",
-                id: 1,
-                metafield_namespaces: [],
-                topic: "app/uninstalled",
-                updated_at: "updated_at",
-            }),
+            ],
         },
-    };
-    const mockFactory: jest.Mock<Shopify> = jest.fn().mockReturnValue(shop) as jest.Mock<Shopify>;
+    }));
+    fetch.mockResponseOnce(JSON.stringify({}));
 
     const result = await handlerAsync(
         event,
         webhooks,
-        mockFactory,
+        // @ts-ignore
+        fetch,
     );
 
-    expect(result).toBeTruthy();
-    expect(mockFactory).toBeCalledWith("accessToken", "example.myshopify.com");
-    expect(shop.webhook.list).toBeCalled();
-    expect(shop.webhook.delete.mock.calls.length).toBe(1);
-    expect(shop.webhook.delete).toBeCalledWith(2);
+    expect(result).toBe(true);
+    expect(fetch.mock.calls.length).toBe(2);
+    expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/webhooks.json");
+    expect(fetch.mock.calls[0][1]).toEqual({
+        body: "",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": "accessToken",
+        },
+        method: "GET",
+    });
+    expect(fetch.mock.calls[1][0]).toEqual("https://example.myshopify.com/admin/webhooks/2.json");
+    expect(fetch.mock.calls[1][1]).toEqual({
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": "accessToken",
+        },
+        method: "DELETE",
+    });
 });
 
 test("Update existing webhooks", async () => {
@@ -244,21 +241,24 @@ test("Update existing webhooks", async () => {
         }],
     };
 
-    const shop = {
-        webhook: {
-            list: jest.fn().mockName("webhook.list").mockReturnValue([
-                {
-                    address: "https://app.example.com/app/uninstalled",
-                    created_at: "created_at",
-                    fields: [],
-                    format: "json",
-                    id: 1,
-                    metafield_namespaces: [],
-                    topic: "app/uninstalled",
-                    updated_at: "updated_at",
-                },
-            ]),
-            update: jest.fn().mockName("webhook.update").mockReturnValue({
+    fetch.resetMocks();
+    fetch.mockResponseOnce(JSON.stringify({
+        data: {
+            webhooks: [{
+                address: "https://app.example.com/app/uninstalled",
+                created_at: "created_at",
+                fields: [],
+                format: "json",
+                id: 1,
+                metafield_namespaces: [],
+                topic: "app/uninstalled",
+                updated_at: "updated_at",
+            }],
+        },
+    }));
+    fetch.mockResponseOnce(JSON.stringify({
+        data: {
+            webhook: {
                 address: "https://app.example.com/new/app/uninstalled",
                 created_at: "created_at",
                 fields: [],
@@ -267,24 +267,38 @@ test("Update existing webhooks", async () => {
                 metafield_namespaces: [],
                 topic: "app/uninstalled",
                 updated_at: "updated_at",
-            }),
+            },
         },
-    };
-    const mockFactory: jest.Mock<Shopify> = jest.fn().mockReturnValue(shop) as jest.Mock<Shopify>;
+    }));
 
     const result = await handlerAsync(
         event,
         webhooks,
-        mockFactory,
+        // @ts-ignore
+        fetch,
     );
 
-    expect(result).toBeTruthy();
-    expect(mockFactory).toBeCalledWith("accessToken", "example.myshopify.com");
-    expect(shop.webhook.list).toBeCalled();
-    expect(shop.webhook.update.mock.calls.length).toBe(1);
-    expect(shop.webhook.update).toBeCalledWith(1, {
-        address: "https://app.example.com/new/app/uninstalled",
-        format: "json",
-        topic: "app/uninstalled",
+    expect(result).toBe(true);
+    expect(fetch.mock.calls.length).toBe(2);
+    expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/webhooks.json");
+    expect(fetch.mock.calls[0][1]).toEqual({
+        body: "",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": "accessToken",
+        },
+        method: "GET",
+    });
+    expect(fetch.mock.calls[1][0]).toEqual("https://example.myshopify.com/admin/webhooks/1.json");
+    expect(fetch.mock.calls[1][1]).toEqual({
+        // tslint:disable-next-line:max-line-length
+        body: "{\"webhook\":{\"address\":\"https://app.example.com/new/app/uninstalled\",\"format\":\"json\",\"topic\":\"app/uninstalled\"}}",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": "accessToken",
+        },
+        method: "PUT",
     });
 });

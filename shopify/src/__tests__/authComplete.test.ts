@@ -1,6 +1,7 @@
 import { APIGatewayEvent } from "aws-lambda";
 import * as AWS from "aws-sdk";
 import * as crypto from "crypto";
+import * as fetch from "jest-fetch-mock";
 
 import { handlerAsync } from "../authComplete";
 import { createJWT } from "../lib/jwt";
@@ -123,14 +124,22 @@ test("Creates a new user", async () => {
         })),
     });
 
-    const post = jest.fn().mockReturnValue(new Promise((resolve) => resolve({
-        body: {
-            access_token: "access_token",
-        },
-    })));
+    fetch.resetMocks();
+    fetch.mockResponseOnce(JSON.stringify({
+        access_token: "access_token",
+    }));
 
     const now = new Date(1525917740);
-    const result = await handlerAsync(event, now, "randomString", post, identityProvider, dynamodb, sns);
+    const result = await handlerAsync(
+        event,
+        now,
+        "randomString",
+        identityProvider,
+        dynamodb,
+        sns,
+        // @ts-ignore
+        fetch,
+    );
 
     expect(result).toEqual({
         // tslint:disable-next-line:max-line-length
@@ -143,6 +152,16 @@ test("Creates a new user", async () => {
         },
         statusCode: 200,
     });
+    expect(fetch).toBeCalledWith(
+        "https://example.myshopify.com/admin/oauth/access_token",
+        {
+            body: "{\"client_id\":\"shopify-api-key\",\"client_secret\":\"shopify-api-secret\",\"code\":\"1234\"}",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            method: "POST",
+        });
     expect(dynamodb.update).toBeCalledWith({
         ExpressionAttributeValues: {
             ":accessToken": "access_token",
@@ -265,14 +284,22 @@ test("Finds an existing user", async () => {
         })),
     });
 
-    const post = jest.fn().mockReturnValue(new Promise((resolve) => resolve({
-        body: {
-            access_token: "access_token",
-        },
-    })));
+    fetch.resetMocks();
+    fetch.mockResponseOnce(JSON.stringify({
+        access_token: "access_token",
+    }));
 
     const now = new Date(1525917740);
-    const result = await handlerAsync(event, now, "randomString", post, identityProvider, dynamodb, sns);
+    const result = await handlerAsync(
+        event,
+        now,
+        "randomString",
+        identityProvider,
+        dynamodb,
+        sns,
+        // @ts-ignore
+        fetch,
+    );
 
     expect(result).toEqual({
         // tslint:disable-next-line:max-line-length
@@ -285,6 +312,16 @@ test("Finds an existing user", async () => {
         },
         statusCode: 200,
     });
+    expect(fetch).toBeCalledWith(
+        "https://example.myshopify.com/admin/oauth/access_token",
+        {
+            body: "{\"client_id\":\"shopify-api-key\",\"client_secret\":\"shopify-api-secret\",\"code\":\"1234\"}",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            method: "POST",
+        });
     expect(dynamodb.update).toBeCalledWith({
         ExpressionAttributeValues: {
             ":accessToken": "access_token",

@@ -2,18 +2,17 @@ import "source-map-support/register";
 
 import { SNSEvent } from "aws-lambda";
 import * as AWS from "aws-sdk";
-import * as Shopify from "shopify-api-node";
-import { IShop } from "shopify-api-node";
+import fetch, { Request, RequestInit, Response } from "node-fetch";
+import { IShop } from "./lib/shopify";
 
 import { IAppInstalledMessage, IAuthCompleteMessage } from "./interfaces";
 import { writeShop } from "./lib/dynamodb";
-import { shopifyClientFactory } from "./lib/shopifyClientFactory";
 
 export async function handlerAsync(
     event: SNSEvent,
-    clientFactory: (accessToken: string, shopDomain: string) => Shopify,
     dynamodb: AWS.DynamoDB.DocumentClient,
     sns: AWS.SNS,
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
 ): Promise<boolean> {
     console.log("Event", event);
 
@@ -24,11 +23,18 @@ export async function handlerAsync(
         const message = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
         console.log("Message", message);
 
-        const shopify = clientFactory(message.accessToken, message.shopDomain);
+        const resp = await fetchFn(`https://message.shopDomain/admin/api/graphql.json`, {
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": message.accessToken,
+            },
+            method: "POST",
+        });
 
-        // TODO The catch() should provider some sort of retry mechanism (i.e. SQS retry, SNS notifications, etc)
-        const shop = await shopify.shop.get();
-        console.log(shop);
+        const json = await resp.json();
+        const shop = json.shop as IShop;
+
         await writeShop(dynamodb, shop, message.shopDomain);
         await sendAppInstalledNotification(sns, message.shopDomain, shop);
     }
@@ -59,5 +65,5 @@ export async function handler(event: SNSEvent): Promise<boolean> {
     const dynamodb = new AWS.DynamoDB.DocumentClient({ apiVersion: "2012-08-10" });
     const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
 
-    return await handlerAsync(event, shopifyClientFactory, dynamodb, sns);
+    return await handlerAsync(event, dynamodb, sns, fetch);
 }

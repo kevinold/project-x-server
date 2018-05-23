@@ -1,17 +1,16 @@
 import "source-map-support/register";
 
 import { SNSEvent } from "aws-lambda";
-import * as Shopify from "shopify-api-node";
-import { ICreateScriptTag, IScriptTag, IUpdateScriptTag } from "shopify-api-node";
+import fetch, { Request, RequestInit, Response } from "node-fetch";
 
 import { config } from "./config";
 import { IAuthCompleteMessage } from "./interfaces";
-import { shopifyClientFactory } from "./lib/shopifyClientFactory";
+import { ICreateScriptTag, IScriptTag, IUpdateScriptTag } from "./lib/shopify";
 
 export async function handlerAsync(
     event: SNSEvent,
-    clientFactory: (accessToken: string, shopDomain: string) => Shopify,
     scriptTags: ICreateScriptTag[],
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
 ): Promise<boolean> {
     console.log("Event", event);
 
@@ -20,34 +19,58 @@ export async function handlerAsync(
         const data = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
         console.log("Data", data);
 
-        const shopify = clientFactory(data.accessToken, data.shopDomain);
+        const { accessToken, shopDomain } = data;
 
         // TODO This code needs to be made idempotent
-        const currentScriptTags = await allScriptTags(shopify);
-        await deleteScriptTags(shopify, currentScriptTags, scriptTags);
-        await updateScriptTags(shopify, currentScriptTags, scriptTags);
-        await createScriptTags(shopify, currentScriptTags, scriptTags);
+        const currentScriptTags = await allScriptTags(shopDomain, accessToken, fetchFn);
+        await deleteScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
+        await updateScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
+        await createScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
     }
 
     return true;
 }
 
-async function allScriptTags(shopify: Shopify): Promise<IScriptTag[]> {
-    return shopify.scriptTag.list();
+async function allScriptTags(
+    shopDomain: string,
+    accessToken: string,
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
+): Promise<IScriptTag[]> {
+    const resp = await fetchFn(`https://${shopDomain}/admin/script_tags.json`, {
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": accessToken,
+        },
+        method: "GET",
+    });
+    const json = await resp.json();
+    return json.data.script_tags as IScriptTag[];
 }
 
 async function createScriptTags(
-    shopify: Shopify,
+    shopDomain: string,
+    accessToken: string,
     currentTags: IScriptTag[],
-    requiredScriptTags: ICreateScriptTag[]): Promise<void> {
+    requiredScriptTags: ICreateScriptTag[],
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
+): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-        const promises: Array<Promise<IScriptTag>> = [];
+        const promises: Array<Promise<any>> = [];
 
         console.log("Checking for ScriptTags that need to be created");
         requiredScriptTags.forEach((tag) => {
             if (!currentTags.some((currentValue, _index, _array) => currentValue.src === tag.src)) {
                 console.log("ScriptTag needs to be created", tag);
-                promises.push(shopify.scriptTag.create(tag));
+                promises.push(fetchFn(`https://${shopDomain}/admin/script_tags.json`, {
+                    body: JSON.stringify({ script_tag: tag }),
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "X-Shopify-Access-Token": accessToken,
+                    },
+                    method: "POST",
+                }));
             }
         });
 
@@ -69,17 +92,27 @@ async function createScriptTags(
 }
 
 async function deleteScriptTags(
-    shopify: Shopify,
+    shopDomain: string,
+    accessToken: string,
     currentTags: IScriptTag[],
-    requiredScriptTags: ICreateScriptTag[]): Promise<void> {
+    requiredScriptTags: ICreateScriptTag[],
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
+): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-        const promises: Array<Promise<void>> = [];
+        const promises: Array<Promise<any>> = [];
 
         console.log("Checking for ScriptTags that need to be deleted");
         currentTags.forEach((tag) => {
             if (!requiredScriptTags.some((currentValue, _index, _array) => currentValue.src === tag.src)) {
                 console.log("ScriptTag needs to be deleted", tag);
-                promises.push(shopify.scriptTag.delete(tag.id));
+                promises.push(fetchFn(`https://${shopDomain}/admin/script_tags/${tag.id}.json`, {
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "X-Shopify-Access-Token": accessToken,
+                    },
+                    method: "DELETE",
+                }));
             }
         });
 
@@ -101,11 +134,14 @@ async function deleteScriptTags(
 }
 
 async function updateScriptTags(
-    shopify: Shopify,
+    shopDomain: string,
+    accessToken: string,
     currentTags: IScriptTag[],
-    requiredScriptTags: IUpdateScriptTag[]): Promise<void> {
+    requiredScriptTags: IUpdateScriptTag[],
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
+): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-        const promises: Array<Promise<IScriptTag>> = [];
+        const promises: Array<Promise<any>> = [];
 
         console.log("Checking for ScriptTags that need to be updated");
         currentTags.forEach((tag) => {
@@ -123,7 +159,15 @@ async function updateScriptTags(
 
                 if (requireUpdate) {
                     console.log("ScriptTag needs to be updated", tag);
-                    promises.push(shopify.scriptTag.update(tag.id, currentValue));
+                    promises.push(fetchFn(`https://${shopDomain}/admin/script_tags/${tag.id}.json`, {
+                        body: JSON.stringify({ script_tag: tag }),
+                        headers: {
+                            "Accept": "application/json",
+                            "Content-Type": "application/json",
+                            "X-Shopify-Access-Token": accessToken,
+                        },
+                        method: "PUT",
+                    }));
                 }
             });
         });
@@ -146,5 +190,5 @@ async function updateScriptTags(
 }
 
 export async function handler(event: SNSEvent): Promise<boolean> {
-    return await handlerAsync(event, shopifyClientFactory, config.scriptTags);
+    return await handlerAsync(event, config.scriptTags, fetch);
 }

@@ -1,6 +1,7 @@
 import { SNSEvent } from "aws-lambda";
 import * as AWS from "aws-sdk";
-import * as Shopify from "shopify-api-node";
+import * as fetch from "jest-fetch-mock";
+
 import { handlerAsync } from "../getShopSettings";
 
 beforeAll(() => {
@@ -40,22 +41,6 @@ test("Happy path", async () => {
         }],
     };
 
-    const shop = {
-        shop: {
-            get: jest.fn().mockName("shopify.get").mockReturnValue({
-                county_taxes: null,
-                domain: "example.com",
-                email: "owner@example.myshopify.com",
-                name: "My Store",
-                source: "partner",
-                tax_shipping: null,
-                taxes_included: null,
-                timezone: "Australia/Sydney",
-            }),
-        },
-    };
-    const mockFactory: jest.Mock<Shopify> = jest.fn().mockReturnValue(shop) as jest.Mock<Shopify>;
-
     const dynamodb = new AWS.DynamoDB.DocumentClient();
     dynamodb.update = jest.fn().mockName("dynamodb.update").mockReturnValueOnce({
         promise: () => new Promise<void>((resolve) => resolve()),
@@ -66,16 +51,42 @@ test("Happy path", async () => {
         promise: () => new Promise<void>((resolve) => resolve()),
     });
 
+    const shop = {
+        shop: {
+            county_taxes: null,
+            domain: "example.com",
+            email: "owner@example.myshopify.com",
+            name: "My Store",
+            source: "partner",
+            tax_shipping: null,
+            taxes_included: null,
+            timezone: "Australia/Sydney",
+        },
+    };
+
+    fetch.resetMocks();
+    fetch.mockResponseOnce(JSON.stringify(shop));
+
     const result = await handlerAsync(
         event,
-        mockFactory,
         dynamodb,
         sns,
+        // @ts-ignore
+        fetch,
     );
 
     expect(result).toBeTruthy();
-    expect(mockFactory).toBeCalledWith("accessToken", "example.myshopify.com");
-    expect(shop.shop.get).toBeCalled();
+    expect(fetch).toBeCalledWith(
+        "https://message.shopDomain/admin/api/graphql.json",
+        {
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": "accessToken",
+            },
+            method: "POST",
+        },
+    );
     expect(dynamodb.update).toBeCalledWith({
         ExpressionAttributeNames: {
             "#P0": "domain",

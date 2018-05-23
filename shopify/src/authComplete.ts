@@ -3,8 +3,8 @@ import "source-map-support/register";
 import { APIGatewayEvent, ProxyResult } from "aws-lambda";
 import * as AWS from "aws-sdk";
 import * as crypto from "crypto";
-import * as got from "got";
 import * as jwt from "jsonwebtoken";
+import fetch, { Request, RequestInit, Response } from "node-fetch";
 
 import { badRequest, internalError, ok } from "./lib/http";
 import { createJWT } from "./lib/jwt";
@@ -23,10 +23,11 @@ export async function handlerAsync(
     event: APIGatewayEvent,
     now: Date,
     nonce: string,
-    post: (url: got.GotUrl, options: got.GotJSONOptions) => got.GotPromise<any>,
     identityProvider: AWS.CognitoIdentityServiceProvider,
     dynamodb: AWS.DynamoDB.DocumentClient,
-    sns: AWS.SNS): Promise<ProxyResult> {
+    sns: AWS.SNS,
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
+): Promise<ProxyResult> {
     console.log("Event", event);
 
     try {
@@ -50,7 +51,7 @@ export async function handlerAsync(
             return badRequest("Invalid 'token'");
         }
 
-        const resp = await exchangeToken(json.params.shop, json.params.code, post);
+        const resp = await exchangeToken(json.params.shop, json.params.code, fetchFn);
         const accessToken = resp.access_token;
         if (accessToken === undefined) {
             console.log("resp[\"access_token\"] is undefined");
@@ -134,27 +135,26 @@ function validateHMAC(params: any): boolean {
 async function exchangeToken(
     shop: string,
     code: string,
-    post: (url: got.GotUrl, options: got.GotJSONOptions) => got.GotPromise<any>): Promise<IShopifyTokenResponse> {
-    const body = {
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
+): Promise<IShopifyTokenResponse> {
+    const body = JSON.stringify({
         client_id: process.env.SHOPIFY_API_KEY,
         client_secret: process.env.SHOPIFY_API_SECRET,
         code,
-    };
+    });
 
     const url = `https://${shop}/admin/oauth/access_token`;
 
-    const options: got.GotJSONOptions = {
+    const res = await fetchFn(url, {
         body,
         headers: {
             "Accept": "application/json",
             "Content-Type": "application/json",
         },
-        json: true,
         method: "POST",
-    };
+    });
 
-    const res: got.Response<IShopifyTokenResponse> = await post(url, options);
-    const json = res.body;
+    const json = await res.json();
     console.log("Shopify Token Exchange Response", json);
     if ("error_description" in json || "error" in json || "errors" in json) {
         throw new Error(json.error_description || json.error || json.errors);
@@ -257,5 +257,5 @@ export async function handler(event: APIGatewayEvent): Promise<ProxyResult> {
     const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
     const identityProvider = new AWS.CognitoIdentityServiceProvider({ apiVersion: "2016-04-18" });
 
-    return await handlerAsync(event, new Date(), getRandomString(), got.post, identityProvider, dynamodb, sns);
+    return await handlerAsync(event, new Date(), getRandomString(), identityProvider, dynamodb, sns, fetch);
 }

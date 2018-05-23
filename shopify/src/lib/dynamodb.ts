@@ -1,4 +1,4 @@
-import { IShop } from "shopify-api-node";
+import { IShop } from "./shopify";
 
 import { snakeCase } from "./string";
 
