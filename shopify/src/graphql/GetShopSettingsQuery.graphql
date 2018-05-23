@@ -1,0 +1,7 @@
+query GetShopSettings {
+    shop {
+        email
+        name
+        myshopifyDomain
+    }
+}

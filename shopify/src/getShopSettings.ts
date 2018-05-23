@@ -3,10 +3,12 @@ import "source-map-support/register";
 import { SNSEvent } from "aws-lambda";
 import * as AWS from "aws-sdk";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
-import { IShop } from "./lib/shopify";
 
 import { IAppInstalledMessage, IAuthCompleteMessage } from "./interfaces";
 import { writeShop } from "./lib/dynamodb";
+import { IShop } from "./lib/shopify";
+
+import * as GetShopSettingsQueryGQL from "./graphql/GetShopSettingsQuery.graphql";
 
 export async function handlerAsync(
     event: SNSEvent,
@@ -23,17 +25,18 @@ export async function handlerAsync(
         const message = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
         console.log("Message", message);
 
-        const resp = await fetchFn(`https://message.shopDomain/admin/api/graphql.json`, {
+        const resp = await fetchFn(`https://${message.shopDomain}/admin/api/graphql.json`, {
+            body: GetShopSettingsQueryGQL,
             headers: {
                 "Accept": "application/json",
-                "Content-Type": "application/json",
+                "Content-Type": "application/graphql",
                 "X-Shopify-Access-Token": message.accessToken,
             },
             method: "POST",
         });
 
         const json = await resp.json();
-        const shop = json.shop as IShop;
+        const shop = json.data.shop as IShop;
 
         await writeShop(dynamodb, shop, message.shopDomain);
         await sendAppInstalledNotification(sns, message.shopDomain, shop);

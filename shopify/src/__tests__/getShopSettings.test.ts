@@ -3,6 +3,7 @@ import * as AWS from "aws-sdk";
 import * as fetch from "jest-fetch-mock";
 
 import { handlerAsync } from "../getShopSettings";
+import * as GetShopSettingsQueryGQL from "../graphql/GetShopSettingsQuery.graphql";
 
 beforeAll(() => {
     process.env.SHOPS_TABLE = "shops";
@@ -52,15 +53,17 @@ test("Happy path", async () => {
     });
 
     const shop = {
-        shop: {
-            county_taxes: null,
-            domain: "example.com",
-            email: "owner@example.myshopify.com",
-            name: "My Store",
-            source: "partner",
-            tax_shipping: null,
-            taxes_included: null,
-            timezone: "Australia/Sydney",
+        data: {
+            shop: {
+                county_taxes: null,
+                domain: "example.com",
+                email: "owner@example.myshopify.com",
+                name: "My Store",
+                source: "partner",
+                tax_shipping: null,
+                taxes_included: null,
+                timezone: "Australia/Sydney",
+            },
         },
     };
 
@@ -77,11 +80,12 @@ test("Happy path", async () => {
 
     expect(result).toBeTruthy();
     expect(fetch).toBeCalledWith(
-        "https://message.shopDomain/admin/api/graphql.json",
+        "https://example.myshopify.com/admin/api/graphql.json",
         {
+            body: GetShopSettingsQueryGQL,
             headers: {
                 "Accept": "application/json",
-                "Content-Type": "application/json",
+                "Content-Type": "application/graphql",
                 "X-Shopify-Access-Token": "accessToken",
             },
             method: "POST",

@@ -93,8 +93,11 @@ test("Adds new script tags", async () => {
     );
 
     expect(result).toBe(true);
+    // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
+    // @ts-ignore
     expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/script_tags.json");
+    // @ts-ignore
     expect(fetch.mock.calls[0][1]).toEqual({
         headers: {
             "Accept": "application/json",
@@ -103,7 +106,9 @@ test("Adds new script tags", async () => {
         },
         method: "GET",
     });
+    // @ts-ignore
     expect(fetch.mock.calls[1][0]).toEqual("https://example.myshopify.com/admin/script_tags.json");
+    // @ts-ignore
     expect(fetch.mock.calls[1][1]).toEqual({
         // tslint:disable-next-line:max-line-length
         body: "{\"script_tag\":{\"display_scope\":\"all\",\"event\":\"onload\",\"src\":\"https://example.com/2\"}}",
@@ -160,8 +165,11 @@ test("Deletes old script tags", async () => {
     );
 
     expect(result).toBe(true);
+    // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
+    // @ts-ignore
     expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/script_tags.json");
+    // @ts-ignore
     expect(fetch.mock.calls[0][1]).toEqual({
         headers: {
             "Accept": "application/json",
@@ -170,7 +178,9 @@ test("Deletes old script tags", async () => {
         },
         method: "GET",
     });
+    // @ts-ignore
     expect(fetch.mock.calls[1][0]).toEqual("https://example.myshopify.com/admin/script_tags/2.json");
+    // @ts-ignore
     expect(fetch.mock.calls[1][1]).toEqual({
         headers: {
             "Accept": "application/json",
@@ -227,8 +237,11 @@ test("Updates existing script tags", async () => {
     );
 
     expect(result).toBe(true);
+    // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
+    // @ts-ignore
     expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/script_tags.json");
+    // @ts-ignore
     expect(fetch.mock.calls[0][1]).toEqual({
         headers: {
             "Accept": "application/json",
@@ -237,7 +250,9 @@ test("Updates existing script tags", async () => {
         },
         method: "GET",
     });
+    // @ts-ignore
     expect(fetch.mock.calls[1][0]).toEqual("https://example.myshopify.com/admin/script_tags/1.json");
+    // @ts-ignore
     expect(fetch.mock.calls[1][1]).toEqual({
         // tslint:disable-next-line:max-line-length
         body: "{\"script_tag\":{\"created_at\":\"created_at\",\"display_scope\":\"all\",\"event\":\"onload\",\"id\":1,\"src\":\"https://example.com/1\",\"updated_at\":\"updated_at\"}}",

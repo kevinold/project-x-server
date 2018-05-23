@@ -27,6 +27,7 @@ module.exports = {
 
   module: {
     rules: [
+      { test: /\.graphql$/, loader: "raw-loader", enforce: "pre", exclude: /node_modules/ },
       { test: /\.js$/, loader: "source-map-loader", enforce: "pre", exclude: /node_modules/ },
       { test: /\.tsx$/, loader: "source-map-loader", enforce: "pre", exclude: /node_modules/ },
       { test: /\.tsx?$/, loader: ["ts-loader"] }
