@@ -7,7 +7,7 @@ import { handlerAsync } from "../authComplete";
 import { createJWT } from "../lib/jwt";
 
 beforeAll(() => {
-    process.env.AUTH_COMPLETE_STEP_FUNCTION_ARN = "auth-complete-step-function-arn";
+    process.env.AUTH_COMPLETE_STATE_MACHINE_ARN = "auth-complete-step-function-arn";
     process.env.JWT_ISS = "jwt-iss";
     process.env.JWT_SECRET = "jwt-secret";
     process.env.SHOPIFY_API_KEY = "shopify-api-key";
@@ -18,7 +18,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-    delete process.env.AUTH_COMPLETE_STEP_FUNCTION_ARN;
+    delete process.env.AUTH_COMPLETE_STATE_MACHINE_ARN;
     delete process.env.JWT_ISS;
     delete process.env.JWT_SECRET;
     delete process.env.SHOPIFY_API_KEY;

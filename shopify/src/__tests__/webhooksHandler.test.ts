@@ -17,6 +17,7 @@ test("A valid webhook returns 200 and publishes the event", async () => {
             address: "https://app.example.com/app/uninstalled",
             format: "json",
             snsTopicArn: "app-uninstalled-topic-arn",
+            stateMachineArn: "app-uninstalled-step-function-arn",
             topic: "app/uninstalled",
         },
     ];
@@ -70,10 +71,20 @@ test("A valid webhook returns 200 and publishes the event", async () => {
         })),
     });
 
+    const stepFunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+    stepFunctions.startExecution = jest.fn().mockName("stepFunctions.startExecution").mockReturnValueOnce({
+        promise: () => new Promise((resolve) => resolve({
+            $response: {
+                requestId: "request-id",
+            },
+        })),
+    });
+
     const result = await handlerAsync(
         event,
         webhooks,
         sns,
+        stepFunctions,
     );
 
     expect(result).toEqual({
@@ -90,6 +101,11 @@ test("A valid webhook returns 200 and publishes the event", async () => {
         // tslint:disable-next-line:max-line-length
         Message: "{\"data\":{\"domain\":\"example.com\"},\"event\":\"app/uninstalled\",\"shopDomain\":\"example.myshopify.com\"}",
         TopicArn: "app-uninstalled-topic-arn",
+    });
+    expect(stepFunctions.startExecution).toBeCalledWith({
+        // tslint:disable-next-line:max-line-length
+        input: "{\"data\":{\"domain\":\"example.com\"},\"event\":\"app/uninstalled\",\"shopDomain\":\"example.myshopify.com\"}",
+        stateMachineArn: "app-uninstalled-step-function-arn",
     });
 });
 
@@ -153,10 +169,20 @@ test("A non configured X-Shopify-Topic returns 204", async () => {
         })),
     });
 
+    const stepFunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+    stepFunctions.startExecution = jest.fn().mockName("stepFunctions.startExecution").mockReturnValueOnce({
+        promise: () => new Promise((resolve) => resolve({
+            $response: {
+                requestId: "request-id",
+            },
+        })),
+    });
+
     const result = await handlerAsync(
         event,
         webhooks,
         sns,
+        stepFunctions,
     );
 
     expect(result).toEqual({
@@ -170,6 +196,7 @@ test("A non configured X-Shopify-Topic returns 204", async () => {
         statusCode: 204,
     });
     expect(sns.publish).not.toBeCalled();
+    expect(stepFunctions.startExecution).not.toBeCalled();
 });
 
 test("A null body returns 400", async () => {
@@ -219,10 +246,16 @@ test("A null body returns 400", async () => {
 
     const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
 
+    const stepFunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+    stepFunctions.startExecution = jest.fn().mockName("stepFunctions.startExecution").mockReturnValueOnce({
+        promise: () => new Promise((resolve) => resolve({})),
+    });
+
     const result = await handlerAsync(
         event,
         webhooks,
         sns,
+        stepFunctions,
     );
 
     expect(result).toEqual({
@@ -235,6 +268,7 @@ test("A null body returns 400", async () => {
         },
         statusCode: 400,
     });
+    expect(stepFunctions.startExecution).not.toBeCalled();
 });
 
 test("Invalid HMAC header returns 400", async () => {
@@ -284,10 +318,20 @@ test("Invalid HMAC header returns 400", async () => {
 
     const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
 
+    const stepFunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+    stepFunctions.startExecution = jest.fn().mockName("stepFunctions.startExecution").mockReturnValueOnce({
+        promise: () => new Promise((resolve) => resolve({
+            $response: {
+                requestId: "request-id",
+            },
+        })),
+    });
+
     const result = await handlerAsync(
         event,
         webhooks,
         sns,
+        stepFunctions,
     );
 
     expect(result).toEqual({
@@ -300,6 +344,7 @@ test("Invalid HMAC header returns 400", async () => {
         },
         statusCode: 400,
     });
+    expect(stepFunctions.startExecution).not.toBeCalled();
 });
 
 test("Missing HMAC header returns 400", async () => {
@@ -348,10 +393,20 @@ test("Missing HMAC header returns 400", async () => {
 
     const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
 
+    const stepFunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+    stepFunctions.startExecution = jest.fn().mockName("stepFunctions.startExecution").mockReturnValueOnce({
+        promise: () => new Promise((resolve) => resolve({
+            $response: {
+                requestId: "request-id",
+            },
+        })),
+    });
+
     const result = await handlerAsync(
         event,
         webhooks,
         sns,
+        stepFunctions,
     );
 
     expect(result).toEqual({
@@ -364,4 +419,5 @@ test("Missing HMAC header returns 400", async () => {
         },
         statusCode: 400,
     });
+    expect(stepFunctions.startExecution).not.toBeCalled();
 });

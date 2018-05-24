@@ -19,5 +19,11 @@ export const config: IShopifyConfig = {
                 snsTopicArn: process.env.SHOP_UPDATE_TOPIC_ARN || "",
                 topic: "shop/update",
             },
+            {
+                address: `${process.env.WEBHOOKS_URL}/shop/update`,
+                format: "json",
+                stateMachineArn: process.env.SHOP_UPDATE_TOPIC_ARN || "",
+                topic: "shop/update",
+            },
         ],
 };

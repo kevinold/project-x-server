@@ -31,7 +31,7 @@ async function updateOrRemoveExistingWebhooks(
             // Updating existing webhooks if they have changed
             if (existingWebhook.address !== newWebhook.address || existingWebhook.format !== newWebhook.format) {
                 console.log("Updating webhook", newWebhook);
-                const { snsTopicArn, ...updateWebhook } = newWebhook;
+                const { snsTopicArn, stateMachineArn, ...updateWebhook } = newWebhook;
                 await fetchFn(`https://${shopDomain}/admin/webhooks/${existingWebhook.id}.json`, {
                     body: JSON.stringify({ webhook: updateWebhook }),
                     headers: {
@@ -62,7 +62,7 @@ async function addNewWebhooks(
         const existingWebhook = currentWebhooks.find((w) => w.topic === newWebhook.topic);
         if (existingWebhook === undefined) {
             console.log("Adding webhook", newWebhook);
-            const { snsTopicArn, ...createWebhook } = newWebhook;
+            const { snsTopicArn, stateMachineArn, ...createWebhook } = newWebhook;
             await fetchFn(`https://${shopDomain}/admin/webhooks.json`, {
                 body: JSON.stringify({ webhook: createWebhook }),
                 headers: {

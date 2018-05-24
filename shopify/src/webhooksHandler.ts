@@ -11,7 +11,9 @@ import { badRequest, noContent } from "./lib/http";
 export async function handlerAsync(
     event: APIGatewayEvent,
     allWebhooks: IWebhookConfig[],
-    sns: AWS.SNS): Promise<ProxyResult> {
+    sns: AWS.SNS,
+    stepfunctions: AWS.StepFunctions,
+): Promise<ProxyResult> {
     console.log("Event", event);
 
     // If the body is missing the return a bad request
@@ -47,7 +49,7 @@ export async function handlerAsync(
 
     // Loop through each of the matching webhooks and publish a message to the relevant topic
     for (const webhookConfig of webhooks) {
-        const topicArn = webhookConfig.snsTopicArn;
+        const { snsTopicArn, stateMachineArn } = webhookConfig;
 
         const message: IBaseMessage = {
             data: JSON.parse(body),
@@ -55,13 +57,24 @@ export async function handlerAsync(
             shopDomain: shopDomainHeader,
         };
 
-        const params: AWS.SNS.PublishInput = {
-            Message: JSON.stringify(message),
-            TopicArn: topicArn,
-        };
+        if (snsTopicArn !== undefined) {
+            const params: AWS.SNS.PublishInput = {
+                Message: JSON.stringify(message),
+                TopicArn: snsTopicArn,
+            };
 
-        const result = await sns.publish(params).promise();
-        console.log(`SNS ARN ${topicArn}; Message ID ${result.MessageId}`);
+            const result = await sns.publish(params).promise();
+            console.log(`SNS ARN ${snsTopicArn}; Message ID ${result.MessageId}`);
+        }
+
+        if (stateMachineArn !== undefined) {
+            const stepFunctionParams: AWS.StepFunctions.StartExecutionInput = {
+                input: JSON.stringify(message),
+                stateMachineArn,
+            };
+            const result = await stepfunctions.startExecution(stepFunctionParams).promise();
+            console.log(`Step Function ARN ${stateMachineArn}; Request ID ${result.$response.requestId}`);
+        }
     }
 
     return noContent();
@@ -69,6 +82,7 @@ export async function handlerAsync(
 
 export async function handler(event: APIGatewayEvent): Promise<ProxyResult> {
     const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
+    const stepfunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
 
-    return await handlerAsync(event, config.webhooks, sns);
+    return await handlerAsync(event, config.webhooks, sns, stepfunctions);
 }

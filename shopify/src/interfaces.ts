@@ -1,7 +1,8 @@
 import { ICreateScriptTag, ICreateWebhook, IShop, WebhookTopic } from "./lib/shopify";
 
 export interface IWebhookConfig extends ICreateWebhook {
-    snsTopicArn: string;
+    snsTopicArn?: string;
+    stateMachineArn?: string;
 }
 
 export interface IShopifyConfig {

@@ -32,9 +32,9 @@ export async function handlerAsync(
     console.log("Event", event);
 
     try {
-        const authCompleteStepFunctionArn = process.env.AUTH_COMPLETE_STEP_FUNCTION_ARN;
-        if (!authCompleteStepFunctionArn) {
-            return badRequest("'AUTH_COMPLETE_STEP_FUNCTION_ARN' environment variable is not set");
+        const authCompleteStateMachineArn = process.env.AUTH_COMPLETE_STATE_MACHINE_ARN;
+        if (!authCompleteStateMachineArn) {
+            return badRequest("'AUTH_COMPLETE_STATE_MACHINE_ARN' environment variable is not set");
         }
 
         if (!event.body) {
@@ -80,7 +80,7 @@ export async function handlerAsync(
         };
         const stepFunctionParams: AWS.StepFunctions.StartExecutionInput = {
             input: JSON.stringify(data),
-            stateMachineArn: authCompleteStepFunctionArn,
+            stateMachineArn: authCompleteStateMachineArn,
         };
         await stepfunctions.startExecution(stepFunctionParams).promise();
 
