@@ -8,8 +8,7 @@
   "license": "MIT",
   "scripts": {
     "lint": "tslint -p ./tsconfig.json",
-    "test": "jest --coverage",
-    "update:schema": "apollo-codegen introspect-schema https://growing-ecommerce.myshopify.com/admin/api/graphql.jsonl > schema.json && apollo-codegen generate **/*.graphql --schema schema.json --target typescript --output src/schema.ts"
+    "test": "jest --coverage"
   },
   "dependencies": {
     "jsonwebtoken": "^8.2.1",
@@ -30,6 +29,7 @@
     "raw-loader": "^0.5.1",
     "serverless": "^1.27.2",
     "serverless-iam-roles-per-function": "0.1.8",
+    "serverless-step-functions": "^1.4.1",
     "serverless-webpack": "5.1.5",
     "ts-jest": "22.4.6",
     "ts-loader": "^4.3.0",

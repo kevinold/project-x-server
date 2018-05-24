@@ -1,19 +1,16 @@
-import { IShop } from "./shopify";
-
 import { snakeCase } from "./string";
 
 export async function writeShop(
     dynamodb: AWS.DynamoDB.DocumentClient,
-    shop: IShop,
+    shop: { [pname: string]: string | number | boolean },
     shopDomain: string,
 ): Promise<AWS.DynamoDB.UpdateItemOutput> {
     const expressionAttributeValues: any = {};
     const expressionAttributeNames: any = {};
 
     const updateFields = [];
-    let k: keyof IShop;
     let p = 0;
-    for (k in shop) {
+    for (const k in shop) {
         if (shop[k]) {
             const key = `P${p++}`;
             const field = snakeCase(k);
@@ -29,7 +26,7 @@ export async function writeShop(
 
             updateFields.push(`#${key} = :${key}`);
             expressionAttributeNames["#" + key] = field;
-}
+        }
     }
 
     const updateExpression = "SET " + updateFields.join(", ");

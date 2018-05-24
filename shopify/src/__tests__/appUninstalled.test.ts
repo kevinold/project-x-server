@@ -4,12 +4,10 @@ import { handlerAsync } from "../appUninstalled";
 
 beforeAll(() => {
     process.env.SHOPS_TABLE = "shops";
-    process.env.APP_INSTALLED_TOPIC_ARN = "app_install_topic";
 });
 
 afterAll(() => {
     delete process.env.SHOPS_TABLE;
-    delete process.env.APP_INSTALLED_TOPIC_ARN;
 });
 
 test("Happy path", async () => {

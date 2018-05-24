@@ -1,16 +1,10 @@
 import "source-map-support/register";
 
-import { SNSEvent } from "aws-lambda";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
 import { config } from "./config";
-import { IAuthCompleteMessage, IWebhookConfig } from "./interfaces";
+import { IOAuthCompleteStepFunction, IWebhookConfig } from "./interfaces";
 import { IWebhook } from "./lib/shopify";
-
-function hasWebhookChanged(existingWebhook: IWebhook, newWebhook: IWebhookConfig): boolean {
-    return existingWebhook.address !== newWebhook.address
-        || existingWebhook.format !== newWebhook.format;
-}
 
 async function updateOrRemoveExistingWebhooks(
     shopDomain: string,
@@ -35,7 +29,7 @@ async function updateOrRemoveExistingWebhooks(
             });
         } else {
             // Updating existing webhooks if they have changed
-            if (hasWebhookChanged(existingWebhook, newWebhook)) {
+            if (existingWebhook.address !== newWebhook.address || existingWebhook.format !== newWebhook.format) {
                 console.log("Updating webhook", newWebhook);
                 const { snsTopicArn, ...updateWebhook } = newWebhook;
                 await fetchFn(`https://${shopDomain}/admin/webhooks/${existingWebhook.id}.json`, {
@@ -49,7 +43,7 @@ async function updateOrRemoveExistingWebhooks(
                 });
             } else {
                 console.log("Existing webhook [1]", existingWebhook);
-            }
+          }
         }
     }
 }
@@ -85,46 +79,39 @@ async function addNewWebhooks(
 }
 
 export async function handlerAsync(
-    event: SNSEvent,
+    event: IOAuthCompleteStepFunction,
     webhooks: IWebhookConfig[],
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
-): Promise<boolean> {
+): Promise<IOAuthCompleteStepFunction> {
     console.log("Event", event);
 
-    // Loop through all of the records we received
-    for (const record of event.Records) {
-        console.log("Record.Sns", record.Sns);
+    const { accessToken, shopDomain } = event;
 
-        const data = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
-        console.log("Data", data);
+    // Get a list of all existing webhooks
+    // TODO - Should this be paginated?
+    const resp = await fetchFn(`https://${shopDomain}/admin/webhooks.json`, {
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": accessToken,
+        },
+        method: "GET",
+    });
+    console.log("Response", resp);
+    const json = await resp.json();
+    console.log("JSON", json);
+    const currentWebhooks = json.webhooks as IWebhook[];
 
-        const { accessToken, shopDomain } = data;
+    console.log("Configured webhooks", webhooks);
 
-        // Get a list of all existing webhooks
-        // TODO - Should this be paginated?
-        const resp = await fetchFn(`https://${shopDomain}/admin/webhooks.json`, {
-            body: "",
-            headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "X-Shopify-Access-Token": accessToken,
-            },
-            method: "GET",
-        });
-        const json = await resp.json();
-        const currentWebhooks = json.data.webhooks as IWebhook[];
+    await updateOrRemoveExistingWebhooks(shopDomain, accessToken, webhooks, currentWebhooks, fetchFn);
+    await addNewWebhooks(shopDomain, accessToken, webhooks, currentWebhooks, fetchFn);
 
-        console.log("Configured webhooks", webhooks);
+    console.log("Webhooks updated");
 
-        await updateOrRemoveExistingWebhooks(shopDomain, accessToken, webhooks, currentWebhooks, fetchFn);
-        await addNewWebhooks(shopDomain, accessToken, webhooks, currentWebhooks, fetchFn);
-
-        console.log("Webhooks updated");
-    }
-
-    return true;
+    return event;
 }
 
-export async function handler(event: SNSEvent): Promise<boolean> {
+export async function handler(event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> {
     return await handlerAsync(event, config.webhooks, fetch);
 }

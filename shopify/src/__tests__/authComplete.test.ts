@@ -7,7 +7,7 @@ import { handlerAsync } from "../authComplete";
 import { createJWT } from "../lib/jwt";
 
 beforeAll(() => {
-    process.env.AUTH_COMPLETE_TOPIC_ARN = "app-installed-topic-arn";
+    process.env.AUTH_COMPLETE_STEP_FUNCTION_ARN = "auth-complete-step-function-arn";
     process.env.JWT_ISS = "jwt-iss";
     process.env.JWT_SECRET = "jwt-secret";
     process.env.SHOPIFY_API_KEY = "shopify-api-key";
@@ -18,7 +18,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-    delete process.env.AUTH_COMPLETE_TOPIC_ARN;
+    delete process.env.AUTH_COMPLETE_STEP_FUNCTION_ARN;
     delete process.env.JWT_ISS;
     delete process.env.JWT_SECRET;
     delete process.env.SHOPIFY_API_KEY;
@@ -96,13 +96,6 @@ test("Creates a new user", async () => {
         stageVariables: null,
     };
 
-    const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
-    sns.publish = jest.fn().mockName("sns.publish").mockReturnValue({
-        promise: () => new Promise<AWS.SNS.PublishResponse>((resolve) => resolve({
-            MessageId: "1",
-        })),
-    });
-
     const dynamodb = new AWS.DynamoDB.DocumentClient();
     dynamodb.update = jest.fn().mockName("dynamodb.update").mockReturnValueOnce({
         promise: () => new Promise<void>((resolve) => resolve()),
@@ -124,6 +117,11 @@ test("Creates a new user", async () => {
         })),
     });
 
+    const stepFunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+    stepFunctions.startExecution = jest.fn().mockName("stepFunctions.startExecution").mockReturnValueOnce({
+        promise: () => new Promise((resolve) => resolve({})),
+    });
+
     fetch.resetMocks();
     fetch.mockResponseOnce(JSON.stringify({
         access_token: "access_token",
@@ -136,7 +134,7 @@ test("Creates a new user", async () => {
         "randomString",
         identityProvider,
         dynamodb,
-        sns,
+        stepFunctions,
         // @ts-ignore
         fetch,
     );
@@ -185,10 +183,9 @@ test("Creates a new user", async () => {
         Username: "example@myshopify.com",
     });
     expect(identityProvider.adminGetUser).not.toBeCalled();
-    expect(sns.publish).toBeCalledWith({
-        // tslint:disable-next-line:max-line-length
-        Message: "{\"accessToken\":\"access_token\",\"data\":null,\"event\":\"app/auth_complete\",\"shopDomain\":\"example.myshopify.com\"}",
-        TopicArn: "app-installed-topic-arn",
+    expect(stepFunctions.startExecution).toBeCalledWith({
+        input: JSON.stringify({ accessToken: "access_token", shopDomain: shop }),
+        stateMachineArn: "auth-complete-step-function-arn",
     });
 });
 
@@ -260,13 +257,6 @@ test("Finds an existing user", async () => {
         stageVariables: null,
     };
 
-    const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
-    sns.publish = jest.fn().mockName("sns.publish").mockReturnValue({
-        promise: () => new Promise<AWS.SNS.PublishResponse>((resolve) => resolve({
-            MessageId: "1",
-        })),
-    });
-
     const dynamodb = new AWS.DynamoDB.DocumentClient();
     dynamodb.update = jest.fn().mockName("dynamodb.update").mockReturnValueOnce({
         promise: () => new Promise<void>((resolve) => resolve()),
@@ -284,6 +274,11 @@ test("Finds an existing user", async () => {
         })),
     });
 
+    const stepFunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+    stepFunctions.startExecution = jest.fn().mockName("stepFunctions.startExecution").mockReturnValueOnce({
+        promise: () => new Promise((resolve) => resolve({})),
+    });
+
     fetch.resetMocks();
     fetch.mockResponseOnce(JSON.stringify({
         access_token: "access_token",
@@ -296,7 +291,7 @@ test("Finds an existing user", async () => {
         "randomString",
         identityProvider,
         dynamodb,
-        sns,
+        stepFunctions,
         // @ts-ignore
         fetch,
     );
@@ -348,9 +343,8 @@ test("Finds an existing user", async () => {
         UserPoolId: "user-pool-id",
         Username: "example@myshopify.com",
     });
-    expect(sns.publish).toBeCalledWith({
-        // tslint:disable-next-line:max-line-length
-        Message: "{\"accessToken\":\"access_token\",\"data\":null,\"event\":\"app/auth_complete\",\"shopDomain\":\"example.myshopify.com\"}",
-        TopicArn: "app-installed-topic-arn",
+    expect(stepFunctions.startExecution).toBeCalledWith({
+        input: JSON.stringify({ accessToken: "access_token", shopDomain: shop }),
+        stateMachineArn: "auth-complete-step-function-arn",
     });
 });

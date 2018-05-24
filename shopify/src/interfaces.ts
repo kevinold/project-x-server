@@ -15,18 +15,15 @@ export interface IBaseMessage {
     data: object | null;
 }
 
-export interface IAuthCompleteMessage extends IBaseMessage {
-    accessToken: string;
-}
-
-export interface IAppInstalledMessage extends IBaseMessage {
-    data: IShop;
-}
-
 export interface IAppUninstalledMessage extends IBaseMessage {
     data: IShop;
 }
 
 export interface IShopUpdateMessage extends IBaseMessage {
-    data: IShop;
+    data: { [pname: string]: string | number | boolean };
+}
+
+export interface IOAuthCompleteStepFunction {
+    accessToken: string;
+    shopDomain: string;
 }

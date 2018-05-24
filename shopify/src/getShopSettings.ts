@@ -1,72 +1,43 @@
 import "source-map-support/register";
 
-import { SNSEvent } from "aws-lambda";
 import * as AWS from "aws-sdk";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
-import { IAppInstalledMessage, IAuthCompleteMessage } from "./interfaces";
+import { IOAuthCompleteStepFunction } from "./interfaces";
 import { writeShop } from "./lib/dynamodb";
-import { IShop } from "./lib/shopify";
+import { GetShopSettingsQuery } from "./schema";
 
 import * as GetShopSettingsQueryGQL from "./graphql/GetShopSettingsQuery.graphql";
 
 export async function handlerAsync(
-    event: SNSEvent,
+    event: IOAuthCompleteStepFunction,
     dynamodb: AWS.DynamoDB.DocumentClient,
-    sns: AWS.SNS,
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
-): Promise<boolean> {
+): Promise<IOAuthCompleteStepFunction> {
     console.log("Event", event);
 
-    // Loop through each record just in case we receive multiple
-    for (const record of event.Records) {
-        console.log("Record.Sns", record.Sns);
+    const { accessToken, shopDomain } = event;
 
-        const message = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
-        console.log("Message", message);
+    const resp = await fetchFn(`https://${shopDomain}/admin/api/graphql.json`, {
+        body: GetShopSettingsQueryGQL,
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/graphql",
+            "X-Shopify-Access-Token": accessToken,
+        },
+        method: "POST",
+    });
 
-        const resp = await fetchFn(`https://${message.shopDomain}/admin/api/graphql.json`, {
-            body: GetShopSettingsQueryGQL,
-            headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/graphql",
-                "X-Shopify-Access-Token": message.accessToken,
-            },
-            method: "POST",
-        });
+    const json = await resp.json();
+    const shop = (json.data as GetShopSettingsQuery).shop;
 
-        const json = await resp.json();
-        const shop = json.data.shop as IShop;
+    await writeShop(dynamodb, shop, shopDomain);
 
-        await writeShop(dynamodb, shop, message.shopDomain);
-        await sendAppInstalledNotification(sns, message.shopDomain, shop);
-    }
-    return true;
+    return event;
 }
 
-// Send the SNS notification that the application has been installed
-async function sendAppInstalledNotification(
-    sns: AWS.SNS,
-    shopDomain: string,
-    shop: IShop,
-): Promise<AWS.SNS.PublishResponse> {
-    const message: IAppInstalledMessage = {
-        data: shop,
-        event: "app/installed",
-        shopDomain,
-    };
-
-    const params = {
-        Message: JSON.stringify(message),
-        TopicArn: process.env.APP_INSTALLED_TOPIC_ARN,
-    };
-
-    return sns.publish(params).promise();
-}
-
-export async function handler(event: SNSEvent): Promise<boolean> {
+export async function handler(event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> {
     const dynamodb = new AWS.DynamoDB.DocumentClient({ apiVersion: "2012-08-10" });
-    const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
 
-    return await handlerAsync(event, dynamodb, sns, fetch);
+    return await handlerAsync(event, dynamodb, fetch);
 }

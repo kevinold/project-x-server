@@ -1,34 +1,27 @@
 import "source-map-support/register";
 
-import { SNSEvent } from "aws-lambda";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
 import { config } from "./config";
-import { IAuthCompleteMessage } from "./interfaces";
+import { IOAuthCompleteStepFunction } from "./interfaces";
 import { ICreateScriptTag, IScriptTag, IUpdateScriptTag } from "./lib/shopify";
 
 export async function handlerAsync(
-    event: SNSEvent,
+    event: IOAuthCompleteStepFunction,
     scriptTags: ICreateScriptTag[],
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
-): Promise<boolean> {
+): Promise<IOAuthCompleteStepFunction> {
     console.log("Event", event);
 
-    for (const record of event.Records) {
-        console.log("Record.Sns", record.Sns);
-        const data = JSON.parse(record.Sns.Message) as IAuthCompleteMessage;
-        console.log("Data", data);
+    const { accessToken, shopDomain } = event;
 
-        const { accessToken, shopDomain } = data;
+    // TODO This code needs to be made idempotent
+    const currentScriptTags = await allScriptTags(shopDomain, accessToken, fetchFn);
+    await deleteScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
+    await updateScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
+    await createScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
 
-        // TODO This code needs to be made idempotent
-        const currentScriptTags = await allScriptTags(shopDomain, accessToken, fetchFn);
-        await deleteScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
-        await updateScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
-        await createScriptTags(shopDomain, accessToken, currentScriptTags, scriptTags, fetchFn);
-    }
-
-    return true;
+    return event;
 }
 
 async function allScriptTags(
@@ -44,8 +37,9 @@ async function allScriptTags(
         },
         method: "GET",
     });
+    console.log(resp);
     const json = await resp.json();
-    return json.data.script_tags as IScriptTag[];
+    return json.script_tags as IScriptTag[];
 }
 
 async function createScriptTags(
@@ -189,6 +183,6 @@ async function updateScriptTags(
     });
 }
 
-export async function handler(event: SNSEvent): Promise<boolean> {
+export async function handler(event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> {
     return await handlerAsync(event, config.scriptTags, fetch);
 }

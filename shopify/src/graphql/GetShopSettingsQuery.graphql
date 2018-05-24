@@ -1,7 +1,11 @@
+fragment ShopSettings on Shop {
+    email
+    name
+    myshopifyDomain
+}
+
 query GetShopSettings {
     shop {
-        email
-        name
-        myshopifyDomain
+        ...ShopSettings
     }
 }

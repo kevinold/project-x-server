@@ -1,7 +1,6 @@
-import { SNSEvent } from "aws-lambda";
 import * as fetch from "jest-fetch-mock";
 
-import { IWebhookConfig } from "../interfaces";
+import { IOAuthCompleteStepFunction, IWebhookConfig } from "../interfaces";
 import { handlerAsync } from "../webhooksManager";
 
 test("Adds new webhooks", async () => {
@@ -20,61 +19,36 @@ test("Adds new webhooks", async () => {
         },
     ];
 
-    const event: SNSEvent = {
-        Records: [{
-            EventSource: "",
-            EventSubscriptionArn: "",
-            EventVersion: "",
-            Sns: {
-                Message: JSON.stringify({
-                    accessToken: "accessToken",
-                    data: null,
-                    event: "app/auth_complete",
-                    shopDomain: "example.myshopify.com",
-                }),
-                MessageAttributes: {},
-                MessageId: "",
-                Signature: "",
-                SignatureVersion: "",
-                SigningCertUrl: "",
-                Subject: "",
-                Timestamp: "",
-                TopicArn: "",
-                Type: "",
-                UnsubscribeUrl: "",
-            },
-        }],
+    const event: IOAuthCompleteStepFunction = {
+        accessToken: "accessToken",
+        shopDomain: "example.myshopify.com",
     };
 
     fetch.resetMocks();
     fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            webhooks: [
-                {
-                    address: "https://app.example.com/app/uninstalled",
-                    created_at: "created_at",
-                    fields: [],
-                    format: "json",
-                    id: 1,
-                    metafield_namespaces: [],
-                    topic: "app/uninstalled",
-                    updated_at: "updated_at",
-                },
-            ],
-        },
-    }));
-    fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            webhook: {
-                address: "https://app.example.com/shop/update",
+        webhooks: [
+            {
+                address: "https://app.example.com/app/uninstalled",
                 created_at: "created_at",
                 fields: [],
                 format: "json",
-                id: 2,
+                id: 1,
                 metafield_namespaces: [],
-                topic: "shop/update",
+                topic: "app/uninstalled",
                 updated_at: "updated_at",
             },
+        ],
+    }));
+    fetch.mockResponseOnce(JSON.stringify({
+        webhook: {
+            address: "https://app.example.com/shop/update",
+            created_at: "created_at",
+            fields: [],
+            format: "json",
+            id: 2,
+            metafield_namespaces: [],
+            topic: "shop/update",
+            updated_at: "updated_at",
         },
     }));
 
@@ -85,14 +59,13 @@ test("Adds new webhooks", async () => {
         fetch,
     );
 
-    expect(result).toBe(true);
+    expect(result).toEqual(event);
     // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
     // @ts-ignore
     expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/webhooks.json");
     // @ts-ignore
     expect(fetch.mock.calls[0][1]).toEqual({
-        body: "",
         headers: {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -125,58 +98,35 @@ test("Deletes old webhooks", async () => {
         },
     ];
 
-    const event: SNSEvent = {
-        Records: [{
-            EventSource: "",
-            EventSubscriptionArn: "",
-            EventVersion: "",
-            Sns: {
-                Message: JSON.stringify({
-                    accessToken: "accessToken",
-                    data: null,
-                    event: "app/auth_complete",
-                    shopDomain: "example.myshopify.com",
-                }),
-                MessageAttributes: {},
-                MessageId: "",
-                Signature: "",
-                SignatureVersion: "",
-                SigningCertUrl: "",
-                Subject: "",
-                Timestamp: "",
-                TopicArn: "",
-                Type: "",
-                UnsubscribeUrl: "",
-            },
-        }],
+    const event: IOAuthCompleteStepFunction = {
+        accessToken: "accessToken",
+        shopDomain: "example.myshopify.com",
     };
 
     fetch.resetMocks();
     fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            webhooks: [
-                {
-                    address: "https://app.example.com/app/uninstalled",
-                    created_at: "created_at",
-                    fields: [],
-                    format: "json",
-                    id: 1,
-                    metafield_namespaces: [],
-                    topic: "app/uninstalled",
-                    updated_at: "updated_at",
-                },
-                {
-                    address: "https://app.example.com/shop/update",
-                    created_at: "created_at",
-                    fields: [],
-                    format: "json",
-                    id: 2,
-                    metafield_namespaces: [],
-                    topic: "shop/update",
-                    updated_at: "updated_at",
-                },
-            ],
-        },
+        webhooks: [
+            {
+                address: "https://app.example.com/app/uninstalled",
+                created_at: "created_at",
+                fields: [],
+                format: "json",
+                id: 1,
+                metafield_namespaces: [],
+                topic: "app/uninstalled",
+                updated_at: "updated_at",
+            },
+            {
+                address: "https://app.example.com/shop/update",
+                created_at: "created_at",
+                fields: [],
+                format: "json",
+                id: 2,
+                metafield_namespaces: [],
+                topic: "shop/update",
+                updated_at: "updated_at",
+            },
+        ],
     }));
     fetch.mockResponseOnce(JSON.stringify({}));
 
@@ -187,14 +137,13 @@ test("Deletes old webhooks", async () => {
         fetch,
     );
 
-    expect(result).toBe(true);
+    expect(result).toEqual(event);
     // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
     // @ts-ignore
     expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/webhooks.json");
     // @ts-ignore
     expect(fetch.mock.calls[0][1]).toEqual({
-        body: "",
         headers: {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -225,59 +174,34 @@ test("Update existing webhooks", async () => {
         },
     ];
 
-    const event: SNSEvent = {
-        Records: [{
-            EventSource: "",
-            EventSubscriptionArn: "",
-            EventVersion: "",
-            Sns: {
-                Message: JSON.stringify({
-                    accessToken: "accessToken",
-                    data: null,
-                    event: "app/auth_complete",
-                    shopDomain: "example.myshopify.com",
-                }),
-                MessageAttributes: {},
-                MessageId: "",
-                Signature: "",
-                SignatureVersion: "",
-                SigningCertUrl: "",
-                Subject: "",
-                Timestamp: "",
-                TopicArn: "",
-                Type: "",
-                UnsubscribeUrl: "",
-            },
-        }],
+    const event: IOAuthCompleteStepFunction = {
+        accessToken: "accessToken",
+        shopDomain: "example.myshopify.com",
     };
 
     fetch.resetMocks();
     fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            webhooks: [{
-                address: "https://app.example.com/app/uninstalled",
-                created_at: "created_at",
-                fields: [],
-                format: "json",
-                id: 1,
-                metafield_namespaces: [],
-                topic: "app/uninstalled",
-                updated_at: "updated_at",
-            }],
-        },
+        webhooks: [{
+            address: "https://app.example.com/app/uninstalled",
+            created_at: "created_at",
+            fields: [],
+            format: "json",
+            id: 1,
+            metafield_namespaces: [],
+            topic: "app/uninstalled",
+            updated_at: "updated_at",
+        }],
     }));
     fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            webhook: {
-                address: "https://app.example.com/new/app/uninstalled",
-                created_at: "created_at",
-                fields: [],
-                format: "json",
-                id: 1,
-                metafield_namespaces: [],
-                topic: "app/uninstalled",
-                updated_at: "updated_at",
-            },
+        webhook: {
+            address: "https://app.example.com/new/app/uninstalled",
+            created_at: "created_at",
+            fields: [],
+            format: "json",
+            id: 1,
+            metafield_namespaces: [],
+            topic: "app/uninstalled",
+            updated_at: "updated_at",
         },
     }));
 
@@ -288,14 +212,13 @@ test("Update existing webhooks", async () => {
         fetch,
     );
 
-    expect(result).toBe(true);
+    expect(result).toEqual(event);
     // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
     // @ts-ignore
     expect(fetch.mock.calls[0][0]).toEqual("https://example.myshopify.com/admin/webhooks.json");
     // @ts-ignore
     expect(fetch.mock.calls[0][1]).toEqual({
-        body: "",
         headers: {
             "Accept": "application/json",
             "Content-Type": "application/json",

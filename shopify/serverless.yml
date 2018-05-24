@@ -5,21 +5,20 @@ service:
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
+  - serverless-step-functions
 
 provider:
   name: aws
   runtime: nodejs8.10
   memorySize: 256
-  timeout: 3
+  timeout: 10
   environment: ${file(env.yml):${self:custom.stage}}
 
 custom:
   stage: ${opt:stage, self:provider.stage}
   region: ${opt:region, self:provider.region}
   shopsTable: "${self:service}-shops-${self:custom.stage}"
-  appInstalledTopic: "${self:service}-app-installed-${self:custom.stage}"
   appUninstalledTopic: "${self:service}-app-uninstalled-${self:custom.stage}"
-  authCompleteTopic: "${self:service}-app-auth-complete-${self:custom.stage}"
   shopUpdateTopic: "${self:service}-shop-update-${self:custom.stage}"
   userPoolName: "${self:service}-user-pool-${self:custom.stage}"
   userPoolReplyToEmailAddress: ${file(env.yml):${self:custom.stage}.REPLY_EMAIL}
@@ -37,6 +36,8 @@ package:
     - env-example.yml
     - env.yml
     - src/**
+    - schema.json
+    - serverless.yml
     - tsconfig.json
     - tslint.json
     - webpack.config.js
@@ -70,21 +71,21 @@ functions:
         Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
       - Effect: Allow
         Action:
-          - SNS:Publish
-        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
-      - Effect: Allow
-        Action:
           - cognito-idp:AdminCreateUser
           - cognito-idp:AdminGetUser
           - cognito-idp:AdminUpdateUserAttributes
         Resource: { "Fn::GetAtt" : ["CognitoUserPoolAppUserPool", "Arn"] }
+      - Effect: Allow
+        Action:
+          - states:StartExecution
+        Resource: { "Ref": "AuthCompleteStepFunDash${self:service}Dash${self:custom.stage}" }
     events:
       - http:
           path: auth/{platform}
           method: post
           cors: true
     environment:
-      AUTH_COMPLETE_TOPIC_ARN:  { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
+      AUTH_COMPLETE_STEP_FUNCTION_ARN: { "Ref": "AuthCompleteStepFunDash${self:service}Dash${self:custom.stage}" }
       USER_POOL_ID: { "Ref": "CognitoUserPoolAppUserPool" }
   createAuthChallenge:
     handler: src/createAuthChallenge.handler
@@ -105,14 +106,6 @@ functions:
         Action:
           - dynamodb:UpdateItem
         Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
-      - Effect: Allow
-        Action:
-          - SNS:Publish
-        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
-    environment:
-      APP_INSTALLED_TOPIC_ARN: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
-    events:
-      - sns: ${self:custom.authCompleteTopic}
   preSignUp:
     handler: src/preSignUp.handler
     events:
@@ -121,8 +114,6 @@ functions:
           trigger: PreSignUp
   scriptTagsManager:
     handler: src/scriptTagsManager.handler
-    events:
-      - sns: ${self:custom.authCompleteTopic}
   shopUpdate:
     handler: src/shopUpdate.handler
     iamRoleStatements:
@@ -144,15 +135,7 @@ functions:
       - Effect: Allow
         Action:
           - SNS:Publish
-        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appInstalledTopic}" ] ]  }
-      - Effect: Allow
-        Action:
-          - SNS:Publish
         Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.appUninstalledTopic}" ] ]  }
-      - Effect: Allow
-        Action:
-          - SNS:Publish
-        Resource: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.authCompleteTopic}" ] ]  }
       - Effect: Allow
         Action:
           - SNS:Publish
@@ -166,10 +149,39 @@ functions:
       SHOP_UPDATE_TOPIC_ARN: { "Fn::Join" : [":", ["arn:aws:sns:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "${self:custom.shopUpdateTopic}" ] ]  }
   webhooksManager:
     handler: src/webhooksManager.handler
-    events:
-      - sns: ${self:custom.authCompleteTopic}
     environment:
       WEBHOOKS_URL: { "Fn::Join" : ["", ["https://", { "Ref" : "ApiGatewayRestApi" }, ".execute-api.${self:custom.region}.amazonaws.com/${self:custom.stage}/webhooks/shopify" ] ]  }
+
+stepFunctions:
+  stateMachines:
+    AuthComplete:
+      name: authCompleteStepFun-${self:service}-${self:custom.stage}
+      definition:
+        Comment: "All of the tasks required after the user completes OAuth"
+        StartAt: Parallel
+        States:
+          Parallel:
+            Type: Parallel
+            End: true
+            Branches:
+              - StartAt: InstallWebhooks
+                States:
+                  InstallWebhooks:
+                    Type: Task
+                    Resource: "arn:aws:lambda:us-west-2:529152589513:function:shopify-dev-webhooksManager"
+                    End: true
+              - StartAt: InstallScriptTags
+                States:
+                  InstallScriptTags:
+                    Type: Task
+                    Resource: "arn:aws:lambda:us-west-2:529152589513:function:shopify-dev-scriptTagsManager"
+                    End: true
+              - StartAt: GetShopSettings
+                States:
+                  GetShopSettings:
+                    Type: Task
+                    Resource: "arn:aws:lambda:us-west-2:529152589513:function:shopify-dev-getShopSettings"
+                    End: true
 
 resources:
   Resources:

@@ -1,49 +1,22 @@
-import { SNSEvent } from "aws-lambda";
 import * as fetch from "jest-fetch-mock";
 
+import { IOAuthCompleteStepFunction } from "../interfaces";
 import { ICreateScriptTag } from "../lib/shopify";
 import { handlerAsync } from "../scriptTagsManager";
 
 beforeAll(() => {
     process.env.SHOPS_TABLE = "shops";
-    process.env.APP_INSTALLED_TOPIC_ARN = "app_install_topic";
 });
 
 afterAll(() => {
     delete process.env.SHOPS_TABLE;
-    delete process.env.APP_INSTALLED_TOPIC_ARN;
 });
 
-function mockSnsEvent(): SNSEvent {
-    return {
-        Records: [{
-            EventSource: "",
-            EventSubscriptionArn: "",
-            EventVersion: "",
-            Sns: {
-                Message: JSON.stringify({
-                    accessToken: "accessToken",
-                    data: null,
-                    event: "app/uninstalled",
-                    shopDomain: "example.myshopify.com",
-                }),
-                MessageAttributes: {},
-                MessageId: "",
-                Signature: "",
-                SignatureVersion: "",
-                SigningCertUrl: "",
-                Subject: "",
-                Timestamp: "",
-                TopicArn: "",
-                Type: "",
-                UnsubscribeUrl: "",
-            },
-        }],
-    };
-}
-
 test("Adds new script tags", async () => {
-    const event: SNSEvent = mockSnsEvent();
+    const event: IOAuthCompleteStepFunction = {
+        accessToken: "accessToken",
+        shopDomain: "example.myshopify.com",
+    };
 
     const scriptTags: ICreateScriptTag[] = [
         {
@@ -60,29 +33,25 @@ test("Adds new script tags", async () => {
 
     fetch.resetMocks();
     fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            script_tags: [
-                {
-                    created_at: "created_at",
-                    display_scope: "all",
-                    event: "onload",
-                    id: 1,
-                    src: "https://example.com/1",
-                    updated_at: "updated_at",
-                },
-            ],
-        },
-    }));
-    fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            script_tag: {
+        script_tags: [
+            {
                 created_at: "created_at",
                 display_scope: "all",
                 event: "onload",
-                id: 2,
-                src: "https://example.com/2",
+                id: 1,
+                src: "https://example.com/1",
                 updated_at: "updated_at",
             },
+        ],
+    }));
+    fetch.mockResponseOnce(JSON.stringify({
+        script_tag: {
+            created_at: "created_at",
+            display_scope: "all",
+            event: "onload",
+            id: 2,
+            src: "https://example.com/2",
+            updated_at: "updated_at",
         },
     }));
     const result = await handlerAsync(
@@ -92,7 +61,7 @@ test("Adds new script tags", async () => {
         fetch,
     );
 
-    expect(result).toBe(true);
+    expect(result).toEqual(event);
     // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
     // @ts-ignore
@@ -122,7 +91,10 @@ test("Adds new script tags", async () => {
 });
 
 test("Deletes old script tags", async () => {
-    const event: SNSEvent = mockSnsEvent();
+    const event: IOAuthCompleteStepFunction = {
+        accessToken: "accessToken",
+        shopDomain: "example.myshopify.com",
+    };
 
     const scriptTags: ICreateScriptTag[] = [
         {
@@ -134,26 +106,24 @@ test("Deletes old script tags", async () => {
 
     fetch.resetMocks();
     fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            script_tags: [
-                {
-                    created_at: "created_at",
-                    display_scope: "all",
-                    event: "onload",
-                    id: 1,
-                    src: "https://example.com/1",
-                    updated_at: "updated_at",
-                },
-                {
-                    created_at: "created_at",
-                    display_scope: "all",
-                    event: "onload",
-                    id: 2,
-                    src: "https://example.com/2",
-                    updated_at: "updated_at",
-                },
-            ],
-        },
+        script_tags: [
+            {
+                created_at: "created_at",
+                display_scope: "all",
+                event: "onload",
+                id: 1,
+                src: "https://example.com/1",
+                updated_at: "updated_at",
+            },
+            {
+                created_at: "created_at",
+                display_scope: "all",
+                event: "onload",
+                id: 2,
+                src: "https://example.com/2",
+                updated_at: "updated_at",
+            },
+        ],
     }));
     fetch.mockResponseOnce(JSON.stringify({}));
 
@@ -164,7 +134,7 @@ test("Deletes old script tags", async () => {
         fetch,
     );
 
-    expect(result).toBe(true);
+    expect(result).toEqual(event);
     // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
     // @ts-ignore
@@ -192,7 +162,10 @@ test("Deletes old script tags", async () => {
 });
 
 test("Updates existing script tags", async () => {
-    const event: SNSEvent = mockSnsEvent();
+    const event: IOAuthCompleteStepFunction = {
+        accessToken: "accessToken",
+        shopDomain: "example.myshopify.com",
+    };
 
     const scriptTags: ICreateScriptTag[] = [
         {
@@ -204,22 +177,8 @@ test("Updates existing script tags", async () => {
 
     fetch.resetMocks();
     fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            script_tags: [
-                {
-                    created_at: "created_at",
-                    display_scope: "all",
-                    event: "onload",
-                    id: 1,
-                    src: "https://example.com/1",
-                    updated_at: "updated_at",
-                },
-            ],
-        },
-    }));
-    fetch.mockResponseOnce(JSON.stringify({
-        data: {
-            script_tag: {
+        script_tags: [
+            {
                 created_at: "created_at",
                 display_scope: "all",
                 event: "onload",
@@ -227,6 +186,16 @@ test("Updates existing script tags", async () => {
                 src: "https://example.com/1",
                 updated_at: "updated_at",
             },
+        ],
+    }));
+    fetch.mockResponseOnce(JSON.stringify({
+        script_tag: {
+            created_at: "created_at",
+            display_scope: "all",
+            event: "onload",
+            id: 1,
+            src: "https://example.com/1",
+            updated_at: "updated_at",
         },
     }));
     const result = await handlerAsync(
@@ -236,7 +205,7 @@ test("Updates existing script tags", async () => {
         fetch,
     );
 
-    expect(result).toBe(true);
+    expect(result).toEqual(event);
     // @ts-ignore
     expect(fetch.mock.calls.length).toBe(2);
     // @ts-ignore
