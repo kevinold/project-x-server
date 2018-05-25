@@ -85,7 +85,7 @@ functions:
           method: post
           cors: true
     environment:
-      AUTH_COMPLETE_STEP_FUNCTION_ARN: { "Ref": "AuthCompleteStepFunDash${self:service}Dash${self:custom.stage}" }
+      AUTH_COMPLETE_STATE_MACHINE_ARN: { "Ref": "AuthCompleteStepFunDash${self:service}Dash${self:custom.stage}" }
       USER_POOL_ID: { "Ref": "CognitoUserPoolAppUserPool" }
   createAuthChallenge:
     handler: src/createAuthChallenge.handler

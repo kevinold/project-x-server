@@ -1545,6 +1545,7 @@ export type WebhookTopic =
     "customers/delete" |
     "customers/disable" |
     "customers/enable" |
+    "customers/redact" |
     "customers/update" |
     "draft_orders/create" |
     "draft_orders/delete" |
@@ -1569,6 +1570,7 @@ export type WebhookTopic =
     "products/update" |
     "refunds/create" |
     "shop/update" |
+    "shop/redact" |
     "themes/create" |
     "themes/delete" |
     "themes/publish" |
@@ -1601,4 +1603,20 @@ export interface IUpdateWebhook {
     format?: WebhookFormat;
     metafield_namespaces?: string[];
     topic: WebhookTopic;
+}
+
+export interface ICustomerRedact {
+    shop_id: number;
+    shop_domain: string;
+    customer: {
+      id: number;
+      email: string;
+      phone: string;
+    };
+    orders_to_redact: string[];
+  }
+
+export interface IShopRedact {
+    shop_id: number;
+    shop_domain: string;
 }

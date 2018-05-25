@@ -43,7 +43,7 @@ async function updateOrRemoveExistingWebhooks(
                 });
             } else {
                 console.log("Existing webhook [1]", existingWebhook);
-          }
+            }
         }
     }
 }
@@ -87,25 +87,32 @@ export async function handlerAsync(
 
     const { accessToken, shopDomain } = event;
 
-    // Get a list of all existing webhooks
-    // TODO - Should this be paginated?
-    const resp = await fetchFn(`https://${shopDomain}/admin/webhooks.json`, {
-        headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "X-Shopify-Access-Token": accessToken,
-        },
-        method: "GET",
+    // Filter the mandatory webhooks
+    const installableWebhooks = webhooks.filter((w) => {
+        return w.topic !== "customers/redact" && w.topic !== "shop/redact";
     });
-    console.log("Response", resp);
-    const json = await resp.json();
-    console.log("JSON", json);
-    const currentWebhooks = json.webhooks as IWebhook[];
 
-    console.log("Configured webhooks", webhooks);
+    if (installableWebhooks.length > 0) {
+        // Get a list of all existing webhooks
+        // TODO - Should this be paginated?
+        const resp = await fetchFn(`https://${shopDomain}/admin/webhooks.json`, {
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": accessToken,
+            },
+            method: "GET",
+        });
+        console.log("Response", resp);
+        const json = await resp.json();
+        console.log("JSON", json);
+        const currentWebhooks = json.webhooks as IWebhook[];
 
-    await updateOrRemoveExistingWebhooks(shopDomain, accessToken, webhooks, currentWebhooks, fetchFn);
-    await addNewWebhooks(shopDomain, accessToken, webhooks, currentWebhooks, fetchFn);
+        console.log("Configured webhooks", installableWebhooks);
+
+        await updateOrRemoveExistingWebhooks(shopDomain, accessToken, installableWebhooks, currentWebhooks, fetchFn);
+        await addNewWebhooks(shopDomain, accessToken, installableWebhooks, currentWebhooks, fetchFn);
+    }
 
     console.log("Webhooks updated");
 
