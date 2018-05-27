@@ -1,9 +1,10 @@
 import "source-map-support/register";
 
-import { SNSEvent } from "aws-lambda";
+import { Context, SNSEvent } from "aws-lambda";
 import * as AWS from "aws-sdk";
 
 import { IAppUninstalledMessage } from "./interfaces";
+import { withAsyncMonitoring } from "./lib/monitoring";
 
 export async function handlerAsync(
     event: SNSEvent,
@@ -29,8 +30,8 @@ export async function handlerAsync(
     return true;
 }
 
-export async function handler(event: SNSEvent): Promise <boolean> {
+export const handler = withAsyncMonitoring<SNSEvent, Context, boolean>(async (event: SNSEvent): Promise <boolean> => {
     const dynamodb = new AWS.DynamoDB.DocumentClient({ apiVersion: "2012-08-10" });
 
     return await handlerAsync(event, dynamodb);
-}
+});

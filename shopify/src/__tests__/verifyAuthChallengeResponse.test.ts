@@ -1,4 +1,4 @@
-import { CognitoUserPoolEvent } from "aws-lambda";
+import { CognitoUserPoolEvent, Context } from "aws-lambda";
 import { createJWT } from "../lib/jwt";
 import { handler } from "../verifyAuthChallengeResponse";
 
@@ -31,7 +31,25 @@ test("Returns failure if JWT_SECRET environment variable isn't set", async () =>
         version: 1,
     };
 
-    const result = await handler(event);
+    const context: Context = {
+        awsRequestId: "",
+        callbackWaitsForEmptyEventLoop: false,
+        functionName: "",
+        functionVersion: "",
+        invokedFunctionArn: "",
+        logGroupName: "",
+        logStreamName: "",
+        memoryLimitInMB: 256,
+
+        // Functions
+        getRemainingTimeInMillis: () => 1,
+
+        done: (_error?: Error, _result?: any) => { return; },
+        fail: (_error: Error | string) => { return; },
+        succeed: (_messageOrObject: any, _object?: any) => { return; },
+    };
+
+    const result = await handler(event, context);
 
     expect(result.response.answerCorrect).toBe(false);
 });
@@ -54,7 +72,25 @@ test("Returns failure if no challenge answer is provided", async () => {
         version: 1,
     };
 
-    const result = await handler(event);
+    const context: Context = {
+        awsRequestId: "",
+        callbackWaitsForEmptyEventLoop: false,
+        functionName: "",
+        functionVersion: "",
+        invokedFunctionArn: "",
+        logGroupName: "",
+        logStreamName: "",
+        memoryLimitInMB: 256,
+
+        // Functions
+        getRemainingTimeInMillis: () => 1,
+
+        done: (_error?: Error, _result?: any) => { return; },
+        fail: (_error: Error | string) => { return; },
+        succeed: (_messageOrObject: any, _object?: any) => { return; },
+    };
+
+    const result = await handler(event, context);
 
     expect(result.response.answerCorrect).toBe(false);
 });
@@ -78,7 +114,25 @@ test("Returns failure if token doesn't validate", async () => {
         version: 1,
     };
 
-    const result = await handler(event);
+    const context: Context = {
+        awsRequestId: "",
+        callbackWaitsForEmptyEventLoop: false,
+        functionName: "",
+        functionVersion: "",
+        invokedFunctionArn: "",
+        logGroupName: "",
+        logStreamName: "",
+        memoryLimitInMB: 256,
+
+        // Functions
+        getRemainingTimeInMillis: () => 1,
+
+        done: (_error?: Error, _result?: any) => { return; },
+        fail: (_error: Error | string) => { return; },
+        succeed: (_messageOrObject: any, _object?: any) => { return; },
+    };
+
+    const result = await handler(event, context);
 
     expect(result.response.answerCorrect).toBe(false);
 });
@@ -103,7 +157,25 @@ test("Returns success if the token is valid", async () => {
         version: 1,
     };
 
-    const result = await handler(event);
+    const context: Context = {
+        awsRequestId: "",
+        callbackWaitsForEmptyEventLoop: false,
+        functionName: "",
+        functionVersion: "",
+        invokedFunctionArn: "",
+        logGroupName: "",
+        logStreamName: "",
+        memoryLimitInMB: 256,
+
+        // Functions
+        getRemainingTimeInMillis: () => 1,
+
+        done: (_error?: Error, _result?: any) => { return; },
+        fail: (_error: Error | string) => { return; },
+        succeed: (_messageOrObject: any, _object?: any) => { return; },
+    };
+
+    const result = await handler(event, context);
 
     expect(result.response.answerCorrect).toBe(true);
 });

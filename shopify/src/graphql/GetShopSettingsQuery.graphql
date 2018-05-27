@@ -1,7 +1,7 @@
 fragment ShopSettings on Shop {
     email
-    name
     myshopifyDomain
+    name
 }
 
 query GetShopSettings {

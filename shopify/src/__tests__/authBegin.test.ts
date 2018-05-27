@@ -48,6 +48,7 @@ test("A valid GET returns 200 and a valid object", async () => {
                 userAgent: null,
                 userArn: null,
             },
+            path: "",
             requestId: "",
             requestTimeEpoch: 0,
             resourceId: "",

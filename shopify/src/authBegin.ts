@@ -1,15 +1,14 @@
 import "source-map-support/register";
 
-import { APIGatewayEvent, ProxyResult } from "aws-lambda";
+import { APIGatewayEvent, Context, ProxyResult } from "aws-lambda";
 import * as querystring from "querystring";
 
 import { badRequest, internalError, ok } from "./lib/http";
 import { createJWT } from "./lib/jwt";
+import { withAsyncMonitoring } from "./lib/monitoring";
 import { getRandomString } from "./lib/string";
 
 export async function handlerAsync(event: APIGatewayEvent, now: Date, nonce: string): Promise<ProxyResult> {
-    console.log("Event", event);
-
     try {
         const shopifyApiKey = process.env.SHOPIFY_API_KEY;
         const shopifyScope = process.env.SHOPIFY_SCOPE;
@@ -60,6 +59,7 @@ export async function handlerAsync(event: APIGatewayEvent, now: Date, nonce: str
     }
 }
 
-export async function handler(event: APIGatewayEvent): Promise<ProxyResult> {
-    return await handlerAsync(event, new Date(), getRandomString());
-}
+export const handler = withAsyncMonitoring<APIGatewayEvent, Context, ProxyResult>(
+    async (event: APIGatewayEvent): Promise<ProxyResult> => {
+        return await handlerAsync(event, new Date(), getRandomString());
+    });

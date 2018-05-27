@@ -1,9 +1,11 @@
 import "source-map-support/register";
 
+import { Context } from "aws-lambda";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
 import { config } from "./config";
 import { IOAuthCompleteStepFunction } from "./interfaces";
+import { withAsyncMonitoring } from "./lib/monitoring";
 import { ICreateScriptTag, IScriptTag, IUpdateScriptTag } from "./lib/shopify";
 
 export async function handlerAsync(
@@ -11,8 +13,6 @@ export async function handlerAsync(
     scriptTags: ICreateScriptTag[],
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
 ): Promise<IOAuthCompleteStepFunction> {
-    console.log("Event", event);
-
     const { accessToken, shopDomain } = event;
 
     // TODO This code needs to be made idempotent
@@ -183,6 +183,7 @@ async function updateScriptTags(
     });
 }
 
-export async function handler(event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> {
-    return await handlerAsync(event, config.scriptTags, fetch);
-}
+export const handler = withAsyncMonitoring<IOAuthCompleteStepFunction, Context, IOAuthCompleteStepFunction>(
+    async (event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> => {
+        return await handlerAsync(event, config.scriptTags, fetch);
+    });

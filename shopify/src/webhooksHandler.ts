@@ -1,12 +1,13 @@
 import "source-map-support/register";
 
-import { APIGatewayEvent, ProxyResult } from "aws-lambda";
+import { APIGatewayEvent, Context, ProxyResult } from "aws-lambda";
 import * as AWS from "aws-sdk";
 import * as crypto from "crypto";
 
 import { config } from "./config";
 import { IBaseMessage, IWebhookConfig } from "./interfaces";
 import { badRequest, noContent } from "./lib/http";
+import { withAsyncMonitoring } from "./lib/monitoring";
 
 export async function handlerAsync(
     event: APIGatewayEvent,
@@ -14,8 +15,6 @@ export async function handlerAsync(
     sns: AWS.SNS,
     stepfunctions: AWS.StepFunctions,
 ): Promise<ProxyResult> {
-    console.log("Event", event);
-
     // If the body is missing the return a bad request
     const body = event.body;
     if (body === null) {
@@ -80,9 +79,10 @@ export async function handlerAsync(
     return noContent();
 }
 
-export async function handler(event: APIGatewayEvent): Promise<ProxyResult> {
-    const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
-    const stepfunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+export const handler = withAsyncMonitoring<APIGatewayEvent, Context, ProxyResult>(
+    async (event: APIGatewayEvent): Promise<ProxyResult> => {
+        const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
+        const stepfunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
 
-    return await handlerAsync(event, config.webhooks, sns, stepfunctions);
-}
+        return await handlerAsync(event, config.webhooks, sns, stepfunctions);
+    });

@@ -1,9 +1,11 @@
 import "source-map-support/register";
 
+import { Context } from "aws-lambda";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
 import { config } from "./config";
 import { IOAuthCompleteStepFunction, IWebhookConfig } from "./interfaces";
+import { withAsyncMonitoring } from "./lib/monitoring";
 import { IWebhook } from "./lib/shopify";
 
 async function updateOrRemoveExistingWebhooks(
@@ -83,8 +85,6 @@ export async function handlerAsync(
     webhooks: IWebhookConfig[],
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
 ): Promise<IOAuthCompleteStepFunction> {
-    console.log("Event", event);
-
     const { accessToken, shopDomain } = event;
 
     // Filter the mandatory webhooks
@@ -114,11 +114,10 @@ export async function handlerAsync(
         await addNewWebhooks(shopDomain, accessToken, installableWebhooks, currentWebhooks, fetchFn);
     }
 
-    console.log("Webhooks updated");
-
     return event;
 }
 
-export async function handler(event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> {
-    return await handlerAsync(event, config.webhooks, fetch);
-}
+export const handler = withAsyncMonitoring<IOAuthCompleteStepFunction, Context, IOAuthCompleteStepFunction>(
+    async (event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> => {
+        return await handlerAsync(event, config.webhooks, fetch);
+    });

@@ -1,4 +1,4 @@
-import { CognitoUserPoolEvent } from "aws-lambda";
+import { CognitoUserPoolEvent, Context } from "aws-lambda";
 import { handler } from "../createAuthChallenge";
 
 test("Works with no session", async () => {
@@ -17,7 +17,25 @@ test("Works with no session", async () => {
         version: 1,
     };
 
-    const result = await handler(event);
+    const context: Context = {
+        awsRequestId: "",
+        callbackWaitsForEmptyEventLoop: false,
+        functionName: "",
+        functionVersion: "",
+        invokedFunctionArn: "",
+        logGroupName: "",
+        logStreamName: "",
+        memoryLimitInMB: 256,
+
+        // Functions
+        getRemainingTimeInMillis: () => 1,
+
+        done: (_error?: Error, _result?: any) => { return; },
+        fail: (_error: Error | string) => { return; },
+        succeed: (_messageOrObject: any, _object?: any) => { return; },
+    };
+
+    const result = await handler(event, context);
 
     expect(result.response.publicChallengeParameters).toEqual({
         distraction: "Yes",
@@ -45,7 +63,25 @@ test("Works with an empty session", async () => {
         version: 1,
     };
 
-    const result = await handler(event);
+    const context: Context = {
+        awsRequestId: "",
+        callbackWaitsForEmptyEventLoop: false,
+        functionName: "",
+        functionVersion: "",
+        invokedFunctionArn: "",
+        logGroupName: "",
+        logStreamName: "",
+        memoryLimitInMB: 256,
+
+        // Functions
+        getRemainingTimeInMillis: () => 1,
+
+        done: (_error?: Error, _result?: any) => { return; },
+        fail: (_error: Error | string) => { return; },
+        succeed: (_messageOrObject: any, _object?: any) => { return; },
+    };
+
+    const result = await handler(event, context);
 
     expect(result.response.publicChallengeParameters).toEqual({
         distraction: "Yes",
@@ -76,7 +112,25 @@ test("Works with a session that has values", async () => {
         version: 1,
     };
 
-    const result = await handler(event);
+    const context: Context = {
+        awsRequestId: "",
+        callbackWaitsForEmptyEventLoop: false,
+        functionName: "",
+        functionVersion: "",
+        invokedFunctionArn: "",
+        logGroupName: "",
+        logStreamName: "",
+        memoryLimitInMB: 256,
+
+        // Functions
+        getRemainingTimeInMillis: () => 1,
+
+        done: (_error?: Error, _result?: any) => { return; },
+        fail: (_error: Error | string) => { return; },
+        succeed: (_messageOrObject: any, _object?: any) => { return; },
+    };
+
+    const result = await handler(event, context);
 
     expect(result.response.publicChallengeParameters).not.toEqual({
         distraction: "Yes",

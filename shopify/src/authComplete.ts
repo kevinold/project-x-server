@@ -1,6 +1,6 @@
 import "source-map-support/register";
 
-import { APIGatewayEvent, ProxyResult } from "aws-lambda";
+import { APIGatewayEvent, Context, ProxyResult } from "aws-lambda";
 import * as AWS from "aws-sdk";
 import * as crypto from "crypto";
 import * as jwt from "jsonwebtoken";
@@ -9,6 +9,7 @@ import fetch, { Request, RequestInit, Response } from "node-fetch";
 import { IOAuthCompleteStepFunction } from "./interfaces";
 import { badRequest, internalError, ok } from "./lib/http";
 import { createJWT } from "./lib/jwt";
+import { withAsyncMonitoring } from "./lib/monitoring";
 import { getRandomString } from "./lib/string";
 
 // The shape of the token exchange response from Shopify
@@ -249,10 +250,19 @@ async function writeShop(
     return dynamodb.update(updateParams).promise();
 }
 
-export async function handler(event: APIGatewayEvent): Promise<ProxyResult> {
-    const dynamodb = new AWS.DynamoDB.DocumentClient({ apiVersion: "2012-08-10" });
-    const identityProvider = new AWS.CognitoIdentityServiceProvider({ apiVersion: "2016-04-18" });
-    const stepfunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
+export const handler = withAsyncMonitoring<APIGatewayEvent, Context, ProxyResult>(
+    async (event: APIGatewayEvent): Promise<ProxyResult> => {
+        const dynamodb = new AWS.DynamoDB.DocumentClient({ apiVersion: "2012-08-10" });
+        const identityProvider = new AWS.CognitoIdentityServiceProvider({ apiVersion: "2016-04-18" });
+        const stepfunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
 
-    return await handlerAsync(event, new Date(), getRandomString(), identityProvider, dynamodb, stepfunctions, fetch);
-}
+        return await handlerAsync(
+            event,
+            new Date(),
+            getRandomString(),
+            identityProvider,
+            dynamodb,
+            stepfunctions,
+            fetch,
+        );
+    });
