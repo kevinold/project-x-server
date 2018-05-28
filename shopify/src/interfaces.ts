@@ -24,7 +24,17 @@ export interface IShopUpdateMessage extends IBaseMessage {
     data: { [pname: string]: string | number | boolean };
 }
 
-export interface IOAuthCompleteStepFunction {
+export interface IStoredShopData {
+    [pname: string]: string | number | boolean | undefined;
     accessToken: string;
+    country: string;
+    email: string;
+    installedAt: string;
+    name: string;
+    planDisplayName: string;
+    planName: string;
+    platform: string;
     shopDomain: string;
+    shopifyId?: number;
+    timezone: string;
 }

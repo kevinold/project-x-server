@@ -1,6 +1,6 @@
 import * as fetch from "jest-fetch-mock";
 
-import { IOAuthCompleteStepFunction, IWebhookConfig } from "../interfaces";
+import { IStoredShopData, IWebhookConfig } from "../interfaces";
 import { handlerAsync } from "../webhooksManager";
 
 test("Adds new webhooks", async () => {
@@ -19,9 +19,17 @@ test("Adds new webhooks", async () => {
         },
     ];
 
-    const event: IOAuthCompleteStepFunction = {
+    const event: IStoredShopData = {
         accessToken: "accessToken",
+        country: "AU",
+        email: "john@example.com",
+        installedAt: "2018-01-01 00:00:00",
+        name: "John's Example Store",
+        planDisplayName: "Super Plan",
+        planName: "plus",
+        platform: "shopify",
         shopDomain: "example.myshopify.com",
+        timezone: "Australia/NSW",
     };
 
     fetch.resetMocks();
@@ -98,9 +106,17 @@ test("Deletes old webhooks", async () => {
         },
     ];
 
-    const event: IOAuthCompleteStepFunction = {
+    const event: IStoredShopData = {
         accessToken: "accessToken",
+        country: "AU",
+        email: "john@example.com",
+        installedAt: "2018-01-01 00:00:00",
+        name: "John's Example Store",
+        planDisplayName: "Super Plan",
+        planName: "plus",
+        platform: "shopify",
         shopDomain: "example.myshopify.com",
+        timezone: "Australia/NSW",
     };
 
     fetch.resetMocks();
@@ -174,9 +190,17 @@ test("Update existing webhooks", async () => {
         },
     ];
 
-    const event: IOAuthCompleteStepFunction = {
+    const event: IStoredShopData = {
         accessToken: "accessToken",
+        country: "AU",
+        email: "john@example.com",
+        installedAt: "2018-01-01 00:00:00",
+        name: "John's Example Store",
+        planDisplayName: "Super Plan",
+        planName: "plus",
+        platform: "shopify",
         shopDomain: "example.myshopify.com",
+        timezone: "Australia/NSW",
     };
 
     fetch.resetMocks();
@@ -269,9 +293,17 @@ test("Does not add mandatory webhooks", async () => {
         },
     ];
 
-    const event: IOAuthCompleteStepFunction = {
+    const event: IStoredShopData = {
         accessToken: "accessToken",
+        country: "AU",
+        email: "john@example.com",
+        installedAt: "2018-01-01 00:00:00",
+        name: "John's Example Store",
+        planDisplayName: "Super Plan",
+        planName: "plus",
+        platform: "shopify",
         shopDomain: "example.myshopify.com",
+        timezone: "Australia/NSW",
     };
 
     fetch.resetMocks();

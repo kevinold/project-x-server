@@ -4,7 +4,7 @@ import { Context } from "aws-lambda";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
 import { config } from "./config";
-import { IOAuthCompleteStepFunction, IWebhookConfig } from "./interfaces";
+import { IStoredShopData, IWebhookConfig } from "./interfaces";
 import { withAsyncMonitoring } from "./lib/monitoring";
 import { IWebhook } from "./lib/shopify";
 
@@ -81,10 +81,10 @@ async function addNewWebhooks(
 }
 
 export async function handlerAsync(
-    event: IOAuthCompleteStepFunction,
+    event: IStoredShopData,
     webhooks: IWebhookConfig[],
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
-): Promise<IOAuthCompleteStepFunction> {
+): Promise<IStoredShopData> {
     const { accessToken, shopDomain } = event;
 
     // Filter the mandatory webhooks
@@ -117,7 +117,7 @@ export async function handlerAsync(
     return event;
 }
 
-export const handler = withAsyncMonitoring<IOAuthCompleteStepFunction, Context, IOAuthCompleteStepFunction>(
-    async (event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> => {
+export const handler = withAsyncMonitoring<IStoredShopData, Context, IStoredShopData>(
+    async (event: IStoredShopData): Promise<IStoredShopData> => {
         return await handlerAsync(event, config.webhooks, fetch);
     });

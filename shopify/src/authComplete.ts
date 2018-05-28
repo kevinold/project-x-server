@@ -6,10 +6,12 @@ import * as crypto from "crypto";
 import * as jwt from "jsonwebtoken";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
-import { IOAuthCompleteStepFunction } from "./interfaces";
+import { IStoredShopData } from "./interfaces";
+import { writeShop } from "./lib/dynamodb";
 import { badRequest, internalError, ok } from "./lib/http";
 import { createJWT } from "./lib/jwt";
 import { withAsyncMonitoring } from "./lib/monitoring";
+import { IShop } from "./lib/shopify";
 import { getRandomString } from "./lib/string";
 
 // The shape of the token exchange response from Shopify
@@ -30,8 +32,6 @@ export async function handlerAsync(
     stepfunctions: AWS.StepFunctions,
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
 ): Promise<ProxyResult> {
-    console.log("Event", event);
-
     try {
         const authCompleteStateMachineArn = process.env.AUTH_COMPLETE_STATE_MACHINE_ARN;
         if (!authCompleteStateMachineArn) {
@@ -53,32 +53,42 @@ export async function handlerAsync(
             return badRequest("'params' is missing");
         }
 
-        const { code, shop } = params;
+        const { code, shop: shopDomain } = params;
 
         if (!validateNonce(token, params)
-            || !validateShopDomain(shop)
+            || !validateShopDomain(shopDomain)
             || !validateHMAC(params)) {
             return badRequest("Invalid 'token'");
         }
 
-        const resp = await exchangeToken(shop, code, fetchFn);
+        const resp = await exchangeToken(shopDomain, code, fetchFn);
         const accessToken = resp.access_token;
         if (accessToken === undefined) {
             console.log("resp[\"access_token\"] is undefined");
             throw new Error("resp[\"access_token\"] is undefined");
         }
 
+        const shop = await getShop(shopDomain, accessToken, fetchFn);
+        const data: IStoredShopData = {
+            accessToken,
+            country: shop.country,
+            email: shop.email,
+            installedAt: now.toISOString(),
+            name: shop.name,
+            planDisplayName: shop.plan_display_name,
+            planName: shop.plan_name,
+            platform: "shopify",
+            shopDomain,
+            shopifyId: shop.id,
+            timezone: shop.iana_timezone,
+        };
+
         const shopsTable = process.env.SHOPS_TABLE;
         if (shopsTable && shopsTable !== "") {
-            await writeShop(shop, accessToken, now, shopsTable, dynamodb);
+            await writeShop(dynamodb, data, shopDomain);
         }
 
-        const userId = await createUser(shop, identityProvider);
-
-        const data: IOAuthCompleteStepFunction = {
-            accessToken,
-            shopDomain: shop,
-        };
+        const userId = await createUser(shopDomain, identityProvider);
         const stepFunctionParams: AWS.StepFunctions.StartExecutionInput = {
             input: JSON.stringify(data),
             stateMachineArn: authCompleteStateMachineArn,
@@ -94,6 +104,26 @@ export async function handlerAsync(
         console.log("Error", e);
         return internalError();
     }
+}
+
+async function getShop(
+    shopDomain: string,
+    accessToken: string,
+    fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
+): Promise<IShop> {
+    const resp = await fetchFn(`https://${shopDomain}/admin/shop.json`, {
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": accessToken,
+        },
+        method: "GET",
+    });
+    console.log("Response", resp);
+    const json = await resp.json();
+    console.log("JSON", json);
+    return json.shop as IShop;
+
 }
 
 // Validate the nonce against the token
@@ -222,32 +252,6 @@ async function createUser(
 
         throw err;
     }
-}
-
-// Write the shop record to the dynamodb table
-async function writeShop(
-    shopDomain: string,
-    accessToken: string,
-    now: Date,
-    shopsTable: string,
-    dynamodb: AWS.DynamoDB.DocumentClient): Promise<AWS.DynamoDB.UpdateItemOutput> {
-
-    const updateParams = {
-        ExpressionAttributeValues: {
-            ":accessToken": accessToken,
-            ":installedAt": now.getTime(),
-            ":platform": "shopify",
-        },
-        Key: {
-            shopDomain,
-        },
-        TableName: shopsTable,
-        UpdateExpression: "SET platform = :platform, accessToken = :accessToken, installedAt = :installedAt",
-    };
-    console.log("Update Item", updateParams);
-
-    // TODO Retrieve the shop first and only set installedAt ONCE
-    return dynamodb.update(updateParams).promise();
 }
 
 export const handler = withAsyncMonitoring<APIGatewayEvent, Context, ProxyResult>(

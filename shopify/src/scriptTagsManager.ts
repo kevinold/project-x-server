@@ -4,15 +4,15 @@ import { Context } from "aws-lambda";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
 import { config } from "./config";
-import { IOAuthCompleteStepFunction } from "./interfaces";
+import { IStoredShopData } from "./interfaces";
 import { withAsyncMonitoring } from "./lib/monitoring";
 import { ICreateScriptTag, IScriptTag, IUpdateScriptTag } from "./lib/shopify";
 
 export async function handlerAsync(
-    event: IOAuthCompleteStepFunction,
+    event: IStoredShopData,
     scriptTags: ICreateScriptTag[],
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
-): Promise<IOAuthCompleteStepFunction> {
+): Promise<IStoredShopData> {
     const { accessToken, shopDomain } = event;
 
     // TODO This code needs to be made idempotent
@@ -183,7 +183,7 @@ async function updateScriptTags(
     });
 }
 
-export const handler = withAsyncMonitoring<IOAuthCompleteStepFunction, Context, IOAuthCompleteStepFunction>(
-    async (event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> => {
+export const handler = withAsyncMonitoring<IStoredShopData, Context, IStoredShopData>(
+    async (event: IStoredShopData): Promise<IStoredShopData> => {
         return await handlerAsync(event, config.scriptTags, fetch);
     });

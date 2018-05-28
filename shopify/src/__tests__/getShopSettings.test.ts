@@ -2,7 +2,7 @@ import * as AWS from "aws-sdk";
 import * as fetch from "jest-fetch-mock";
 
 import { handlerAsync } from "../getShopSettings";
-import { IOAuthCompleteStepFunction } from "../interfaces";
+import { IStoredShopData } from "../interfaces";
 
 import * as GetShopSettingsQueryGQL from "../graphql/GetShopSettingsQuery.graphql";
 
@@ -15,9 +15,17 @@ afterAll(() => {
 });
 
 test("Happy path", async () => {
-    const event: IOAuthCompleteStepFunction = {
+    const event: IStoredShopData = {
         accessToken: "accessToken",
+        country: "AU",
+        email: "john@example.com",
+        installedAt: "2018-01-01 00:00:00",
+        name: "John's Example Store",
+        planDisplayName: "Super Plan",
+        planName: "plus",
+        platform: "shopify",
         shopDomain: "example.myshopify.com",
+        timezone: "Australia/NSW",
     };
 
     const dynamodb = new AWS.DynamoDB.DocumentClient();

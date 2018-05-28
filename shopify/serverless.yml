@@ -99,13 +99,13 @@ functions:
       - cognitoUserPool:
           pool: AppUserPool
           trigger: DefineAuthChallenge
-  getShopSettings:
-    handler: src/getShopSettings.handler
-    iamRoleStatements:
-      - Effect: Allow
-        Action:
-          - dynamodb:UpdateItem
-        Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
+#   getShopSettings:
+#     handler: src/getShopSettings.handler
+#     iamRoleStatements:
+#       - Effect: Allow
+#         Action:
+#           - dynamodb:UpdateItem
+#         Resource: { "Fn::Join" : [":", ["arn:aws:dynamodb:${self:custom.region}", { "Ref" : "AWS::AccountId" }, "table/${self:custom.shopsTable}" ] ]  }
   preSignUp:
     handler: src/preSignUp.handler
     events:
@@ -176,12 +176,12 @@ stepFunctions:
                     Type: Task
                     Resource: "arn:aws:lambda:us-west-2:529152589513:function:shopify-dev-scriptTagsManager"
                     End: true
-              - StartAt: GetShopSettings
-                States:
-                  GetShopSettings:
-                    Type: Task
-                    Resource: "arn:aws:lambda:us-west-2:529152589513:function:shopify-dev-getShopSettings"
-                    End: true
+#               - StartAt: GetShopSettings
+#                 States:
+#                   GetShopSettings:
+#                     Type: Task
+#                     Resource: "arn:aws:lambda:us-west-2:529152589513:function:shopify-dev-getShopSettings"
+#                     End: true
 
 resources:
   Resources:

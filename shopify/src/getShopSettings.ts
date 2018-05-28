@@ -4,7 +4,7 @@ import { Context } from "aws-lambda";
 import * as AWS from "aws-sdk";
 import fetch, { Request, RequestInit, Response } from "node-fetch";
 
-import { IOAuthCompleteStepFunction } from "./interfaces";
+import { IStoredShopData } from "./interfaces";
 import { writeShop } from "./lib/dynamodb";
 import { withAsyncMonitoring } from "./lib/monitoring";
 import { GetShopSettingsQuery } from "./schema";
@@ -12,10 +12,10 @@ import { GetShopSettingsQuery } from "./schema";
 import * as GetShopSettingsQueryGQL from "./graphql/GetShopSettingsQuery.graphql";
 
 export async function handlerAsync(
-    event: IOAuthCompleteStepFunction,
+    event: IStoredShopData,
     dynamodb: AWS.DynamoDB.DocumentClient,
     fetchFn: (url: string | Request, init?: RequestInit) => Promise<Response>,
-): Promise<IOAuthCompleteStepFunction> {
+): Promise<IStoredShopData> {
     const { accessToken, shopDomain } = event;
 
     const resp = await fetchFn(`https://${shopDomain}/admin/api/graphql.json`, {
@@ -36,8 +36,8 @@ export async function handlerAsync(
     return event;
 }
 
-export const handler = withAsyncMonitoring<IOAuthCompleteStepFunction, Context, IOAuthCompleteStepFunction>(
-    async (event: IOAuthCompleteStepFunction): Promise<IOAuthCompleteStepFunction> => {
+export const handler = withAsyncMonitoring<IStoredShopData, Context, IStoredShopData>(
+    async (event: IStoredShopData): Promise<IStoredShopData> => {
         const dynamodb = new AWS.DynamoDB.DocumentClient({ apiVersion: "2012-08-10" });
 
         return await handlerAsync(event, dynamodb, fetch);

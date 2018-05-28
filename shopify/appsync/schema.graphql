@@ -5,45 +5,15 @@ type Query {
     shop(shopDomain: String!): Shop
 }
 type Shop {
-    address1: String
-    address2: String
-    city: String
+    accessToken: String
     country: String
-    countryCode: String
-    countryName: String
-    countyTaxes: Boolean
-    createdAt: String
-    currency: String
-    customerEmail: String
-    domain: String
-    eligibleForPayments: Boolean
     email: String
-    finances: Boolean
-    forceSsl: Boolean
-    hasStorefront: Boolean
-    ianaTimezone: String
-    installedAt: Int
-    latitude: Float
-    longitude: Float
-    moneyFormat: String
-    moneyInEmailsFormat: String
-    moneyWithCurrencyFormat: String
-    moneyWithCurrencyInEmailsFormat: String
-    myshopifyDomain: String
+    installedAt: String
     name: String
-    phone: String
     planDisplayName: String
     planName: String
     platform: String
-    primaryLocale: String
-    primaryLocationId: Int
-    province: String
-    provinceCode: String
-    shopDomain: String!
-    shopOwner: String	
-    source: String
+    shopDomain: String
+    shopifyId: Int
     timezone: String
-    updatedAt: String
-    weightUnit: String
-    zip: String
 }

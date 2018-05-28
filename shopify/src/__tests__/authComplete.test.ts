@@ -127,6 +127,59 @@ test("Creates a new user", async () => {
     fetch.mockResponseOnce(JSON.stringify({
         access_token: "access_token",
     }));
+    fetch.mockResponseOnce(JSON.stringify({
+        shop: {
+            address1: "",
+            address2: "",
+            city: "",
+            country: "",
+            country_code: "",
+            country_name: "",
+            county_taxes: "",
+            created_at: "",
+            currency: "",
+            customer_email: null,
+            domain: "",
+            eligible_for_card_reader_giveaway: false,
+            eligible_for_payments: false,
+            email: "",
+            finances: false,
+            force_ssl: true,
+            google_apps_domain: null,
+            google_apps_login_enabled: null,
+            has_discounts: false,
+            has_gift_cards: false,
+            has_storefront: false,
+            iana_timezone: "",
+            id: 1,
+            latitude: 1,
+            longitude: 1,
+            money_format: "",
+            money_in_emails_format: "",
+            money_with_currency_format: "",
+            money_with_currency_in_emails_format: "",
+            myshopify_domain: "",
+            name: "",
+            password_enabled: false,
+            phone: null,
+            plan_display_name: "",
+            plan_name: "",
+            primary_locale: "",
+            primary_location_id: 1,
+            province: "",
+            province_code: "",
+            requires_extra_payments_agreement: false,
+            setup_required: false,
+            shop_owner: "",
+            source: null,
+            tax_shipping: null,
+            taxes_included: null,
+            timezone: "",
+            updated_at: "",
+            weight_unit: "",
+            zip: "",
+        },
+    }));
 
     const now = new Date(1525917740);
     const result = await handlerAsync(
@@ -162,16 +215,23 @@ test("Creates a new user", async () => {
             method: "POST",
         });
     expect(dynamodb.update).toBeCalledWith({
+        ExpressionAttributeNames: {
+            "#P0": "accessToken",
+            "#P1": "installedAt",
+            "#P2": "platform",
+            "#P3": "shopifyId",
+        },
         ExpressionAttributeValues: {
-            ":accessToken": "access_token",
-            ":installedAt": now.getTime(),
-            ":platform": "shopify",
+            ":P0": "access_token",
+            ":P1": "1970-01-18T15:51:57.740Z",
+            ":P2": "shopify",
+            ":P3": 1,
         },
         Key: {
             shopDomain: "example.myshopify.com",
         },
         TableName: "shops",
-        UpdateExpression: "SET platform = :platform, accessToken = :accessToken, installedAt = :installedAt",
+        UpdateExpression: "SET #P0 = :P0, #P1 = :P1, #P2 = :P2, #P3 = :P3",
     });
     expect(identityProvider.adminCreateUser).toBeCalledWith({
         MessageAction: "SUPPRESS",
@@ -185,7 +245,8 @@ test("Creates a new user", async () => {
     });
     expect(identityProvider.adminGetUser).not.toBeCalled();
     expect(stepFunctions.startExecution).toBeCalledWith({
-        input: JSON.stringify({ accessToken: "access_token", shopDomain: shop }),
+        // tslint:disable-next-line:max-line-length
+        input: "{\"accessToken\":\"access_token\",\"country\":\"\",\"email\":\"\",\"installedAt\":\"1970-01-18T15:51:57.740Z\",\"name\":\"\",\"planDisplayName\":\"\",\"planName\":\"\",\"platform\":\"shopify\",\"shopDomain\":\"example.myshopify.com\",\"shopifyId\":1,\"timezone\":\"\"}",
         stateMachineArn: "auth-complete-step-function-arn",
     });
 });
@@ -285,6 +346,59 @@ test("Finds an existing user", async () => {
     fetch.mockResponseOnce(JSON.stringify({
         access_token: "access_token",
     }));
+    fetch.mockResponseOnce(JSON.stringify({
+        shop: {
+            address1: "",
+            address2: "",
+            city: "",
+            country: "",
+            country_code: "",
+            country_name: "",
+            county_taxes: "",
+            created_at: "",
+            currency: "",
+            customer_email: null,
+            domain: "",
+            eligible_for_card_reader_giveaway: false,
+            eligible_for_payments: false,
+            email: "",
+            finances: false,
+            force_ssl: true,
+            google_apps_domain: null,
+            google_apps_login_enabled: null,
+            has_discounts: false,
+            has_gift_cards: false,
+            has_storefront: false,
+            iana_timezone: "",
+            id: 1,
+            latitude: 1,
+            longitude: 1,
+            money_format: "",
+            money_in_emails_format: "",
+            money_with_currency_format: "",
+            money_with_currency_in_emails_format: "",
+            myshopify_domain: "",
+            name: "",
+            password_enabled: false,
+            phone: null,
+            plan_display_name: "",
+            plan_name: "",
+            primary_locale: "",
+            primary_location_id: 1,
+            province: "",
+            province_code: "",
+            requires_extra_payments_agreement: false,
+            setup_required: false,
+            shop_owner: "",
+            source: null,
+            tax_shipping: null,
+            taxes_included: null,
+            timezone: "",
+            updated_at: "",
+            weight_unit: "",
+            zip: "",
+        },
+    }));
 
     const now = new Date(1525917740);
     const result = await handlerAsync(
@@ -320,16 +434,23 @@ test("Finds an existing user", async () => {
             method: "POST",
         });
     expect(dynamodb.update).toBeCalledWith({
+        ExpressionAttributeNames: {
+            "#P0": "accessToken",
+            "#P1": "installedAt",
+            "#P2": "platform",
+            "#P3": "shopifyId",
+        },
         ExpressionAttributeValues: {
-            ":accessToken": "access_token",
-            ":installedAt": now.getTime(),
-            ":platform": "shopify",
+            ":P0": "access_token",
+            ":P1": "1970-01-18T15:51:57.740Z",
+            ":P2": "shopify",
+            ":P3": 1,
         },
         Key: {
             shopDomain: "example.myshopify.com",
         },
         TableName: "shops",
-        UpdateExpression: "SET platform = :platform, accessToken = :accessToken, installedAt = :installedAt",
+        UpdateExpression: "SET #P0 = :P0, #P1 = :P1, #P2 = :P2, #P3 = :P3",
     });
     expect(identityProvider.adminCreateUser).toBeCalledWith({
         MessageAction: "SUPPRESS",
@@ -346,7 +467,8 @@ test("Finds an existing user", async () => {
         Username: "example@myshopify.com",
     });
     expect(stepFunctions.startExecution).toBeCalledWith({
-        input: JSON.stringify({ accessToken: "access_token", shopDomain: shop }),
+        // tslint:disable-next-line:max-line-length
+        input: "{\"accessToken\":\"access_token\",\"country\":\"\",\"email\":\"\",\"installedAt\":\"1970-01-18T15:51:57.740Z\",\"name\":\"\",\"planDisplayName\":\"\",\"planName\":\"\",\"platform\":\"shopify\",\"shopDomain\":\"example.myshopify.com\",\"shopifyId\":1,\"timezone\":\"\"}",
         stateMachineArn: "auth-complete-step-function-arn",
     });
 });

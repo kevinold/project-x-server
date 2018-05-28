@@ -1,6 +1,6 @@
 import * as fetch from "jest-fetch-mock";
 
-import { IOAuthCompleteStepFunction } from "../interfaces";
+import { IStoredShopData } from "../interfaces";
 import { ICreateScriptTag } from "../lib/shopify";
 import { handlerAsync } from "../scriptTagsManager";
 
@@ -13,9 +13,17 @@ afterAll(() => {
 });
 
 test("Adds new script tags", async () => {
-    const event: IOAuthCompleteStepFunction = {
+    const event: IStoredShopData = {
         accessToken: "accessToken",
+        country: "AU",
+        email: "john@example.com",
+        installedAt: "2018-01-01 00:00:00",
+        name: "John's Example Store",
+        planDisplayName: "Super Plan",
+        planName: "plus",
+        platform: "shopify",
         shopDomain: "example.myshopify.com",
+        timezone: "Australia/NSW",
     };
 
     const scriptTags: ICreateScriptTag[] = [
@@ -91,9 +99,17 @@ test("Adds new script tags", async () => {
 });
 
 test("Deletes old script tags", async () => {
-    const event: IOAuthCompleteStepFunction = {
+    const event: IStoredShopData = {
         accessToken: "accessToken",
+        country: "AU",
+        email: "john@example.com",
+        installedAt: "2018-01-01 00:00:00",
+        name: "John's Example Store",
+        planDisplayName: "Super Plan",
+        planName: "plus",
+        platform: "shopify",
         shopDomain: "example.myshopify.com",
+        timezone: "Australia/NSW",
     };
 
     const scriptTags: ICreateScriptTag[] = [
@@ -162,9 +178,17 @@ test("Deletes old script tags", async () => {
 });
 
 test("Updates existing script tags", async () => {
-    const event: IOAuthCompleteStepFunction = {
+    const event: IStoredShopData = {
         accessToken: "accessToken",
+        country: "AU",
+        email: "john@example.com",
+        installedAt: "2018-01-01 00:00:00",
+        name: "John's Example Store",
+        planDisplayName: "Super Plan",
+        planName: "plus",
+        platform: "shopify",
         shopDomain: "example.myshopify.com",
+        timezone: "Australia/NSW",
     };
 
     const scriptTags: ICreateScriptTag[] = [

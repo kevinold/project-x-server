@@ -1,8 +1,6 @@
-import { snakeCase } from "./string";
-
 export async function writeShop(
     dynamodb: AWS.DynamoDB.DocumentClient,
-    shop: { [pname: string]: string | number | boolean },
+    shop: { [pname: string]: string | number | boolean | undefined },
     shopDomain: string,
 ): Promise<AWS.DynamoDB.UpdateItemOutput> {
     const expressionAttributeValues: any = {};
@@ -10,11 +8,10 @@ export async function writeShop(
 
     const updateFields = [];
     let p = 0;
-    for (const k in shop) {
-        if (shop[k]) {
+    for (const field in shop) {
+        if (field !== "shopDomain" && shop[field]) {
             const key = `P${p++}`;
-            const field = snakeCase(k);
-            const val = shop[k];
+            const val = shop[field];
 
             // For these fields convert null and undefined to false
             if (["taxShipping", "taxesIncluded", "countyTaxes"].findIndex((v) => v === field) !== undefined
